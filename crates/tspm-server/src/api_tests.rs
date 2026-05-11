@@ -145,4 +145,57 @@ mod tests {
         let (s, _) = delete(addr, "/api/v1/processes/does-not-exist").await;
         assert_eq!(s, 404, "Expected 404 for non-existent process");
     }
+
+    /// Ensures the router builds without panicking (catches {*name} vs {name} conflicts)
+    #[tokio::test]
+    async fn test_router_builds_without_panic() {
+        let state = test_state();
+        let app = build_router().with_state(state);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        // Spawning the server is the real test — it panics if routes conflict
+        let handle = tokio::spawn(async move { axum::serve(listener, app).await.unwrap(); });
+
+        // Hit health endpoint to confirm the server is actually running
+        let (s, _) = get(addr, "/api/v1/health").await;
+        assert_eq!(s, 200, "Server should be healthy after router construction");
+        handle.abort();
+    }
+
+    /// Test that a process created with a path-like name can be found by its basename
+    #[tokio::test]
+    async fn test_process_name_with_path() {
+        let state = test_state();
+        let addr = start_test_server(state.clone()).await;
+
+        // Create a process whose name looks like a filesystem path
+        let body = json!({
+            "name": "/home/user/projects/myApp",
+            "script": "sleep",
+            "args": ["10"]
+        });
+        let (s, j) = post(addr, "/api/v1/processes", &body).await;
+        assert_eq!(s, 200, "create failed: {j:?}");
+
+        // The list should show the process with a display name of "myApp"
+        let (s, j) = get(addr, "/api/v1/processes").await;
+        assert_eq!(s, 200);
+        let procs = j["data"].as_array().unwrap();
+        assert_eq!(procs.len(), 1);
+        assert_eq!(procs[0]["name"], "myApp", "Should display basename, got {:?}", procs[0]["name"]);
+
+        // GET by basename should find it
+        let (s, _) = get(addr, "/api/v1/processes/myApp").await;
+        assert_eq!(s, 200, "GET by basename should find the process");
+
+        // Stop and DELETE by basename should work
+        let _ = post(addr, "/api/v1/processes/myApp/stop", &json!({})).await;
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        let (s, j) = delete(addr, "/api/v1/processes/myApp").await;
+        assert_eq!(s, 200, "DELETE by basename should work: {j:?}");
+
+        // Should be gone
+        let (_, j) = get(addr, "/api/v1/processes").await;
+        assert!(j["data"].as_array().unwrap().is_empty(), "Process should be removed");
+    }
 }
