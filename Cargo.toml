@@ -1,0 +1,54 @@
+[workspace]
+members = [
+    "crates/tspm-core",
+    "crates/tspm-events",
+    "crates/tspm-engine",
+    "crates/tspm-logging",
+    "crates/tspm-monitor",
+    "crates/tspm-deploy",
+    "crates/tspm-server",
+    "crates/tspm-cli",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/tspm/tspm"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "fmt"] }
+tracing-appender = "0.2"
+clap = { version = "4", features = ["derive", "env"] }
+reqwest = { version = "0.12", features = ["json"] }
+axum = { version = "0.8", features = ["ws"] }
+tower-http = { version = "0.6", features = ["fs", "cors"] }
+nix = { version = "0.29", features = ["process", "signal"] }
+openssh = "0.11"
+procfs = "0.17"
+notify = { version = "7", features = ["macos_fsevent"] }
+notify-debouncer-mini = "0.6"
+time = { version = "0.3", features = ["formatting", "macros"] }
+dirs = "6"
+uuid = { version = "1", features = ["v4"] }
+indicatif = "0.17"
+crossterm = "0.28"
+tabled = "0.18"
+atty = "0.2"
+libc = "0.2"
+
+tspm-core = { path = "crates/tspm-core" }
+tspm-events = { path = "crates/tspm-events" }
+tspm-engine = { path = "crates/tspm-engine" }
+tspm-logging = { path = "crates/tspm-logging" }
+tspm-monitor = { path = "crates/tspm-monitor" }
+tspm-deploy = { path = "crates/tspm-deploy" }
+tspm-server = { path = "crates/tspm-server" }
+tspm-cli = { path = "crates/tspm-cli" }

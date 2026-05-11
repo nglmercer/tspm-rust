@@ -1,0 +1,57 @@
+import { useState, useRef, useEffect } from 'preact/hooks';
+import type { ProcessLogEntry, ProcessStatus } from '../types';
+
+interface Props {
+    entries: ProcessLogEntry[];
+    processes: ProcessStatus[];
+    onClear: () => void;
+}
+
+export function LogsViewer({ entries, processes, onClear }: Props) {
+    const [filter, setFilter] = useState('all');
+    const [paused, setPaused] = useState(false);
+    const bottomRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!paused) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [entries, paused]);
+
+    const filtered = filter === 'all'
+        ? entries
+        : entries.filter(e => e.processName === filter);
+
+    return (
+        <div class="logs-container">
+            <div class="logs-header">
+                <div style="display:flex;gap:0.5rem;align-items:center">
+                    <select
+                        value={filter}
+                        onChange={e => setFilter((e.target as HTMLSelectElement).value)}
+                        style="padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font:inherit;font-size:0.82rem"
+                    >
+                        <option value="all">All processes</option>
+                        {processes.map(p => <option value={p.name}>{p.name}</option>)}
+                    </select>
+                    <span class="state-badge">{filtered.length} lines</span>
+                </div>
+                <div style="display:flex;gap:0.5rem">
+                    <button class="btn btn-sm btn-ghost" onClick={() => setPaused(!paused)}>
+                        {paused ? '▶ Resume' : '⏸ Pause'}
+                    </button>
+                    <button class="btn btn-sm btn-ghost" onClick={onClear}>Clear</button>
+                </div>
+            </div>
+            <div class="logs-output">
+                {filtered.length === 0 && <div class="empty"><p>No logs yet</p></div>}
+                {filtered.map((e, i) => (
+                    <div class="log-line" key={i}>
+                        <span class="log-time">{e.timestamp || '--:--:--'}</span>
+                        <span class="log-proc" title={e.processName}>{e.processName?.split('/').pop() || '?'}</span>
+                        <span class={`log-msg ${e.type === 'stderr' ? 'stderr' : ''}`}>{e.message}</span>
+                    </div>
+                ))}
+                <div ref={bottomRef} />
+            </div>
+        </div>
+    );
+}

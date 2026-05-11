@@ -1,0 +1,31 @@
+# Rust
+/target/
+
+# Node.js
+/node_modules/
+/web-preact/node_modules/
+/web-preact/dist/
+
+# Logs
+*.log
+/logs/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# TSPM specific
+/mcplugins/
+/plugins/
+/tspm.toml.local

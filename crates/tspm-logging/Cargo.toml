@@ -1,0 +1,17 @@
+[package]
+name = "tspm-logging"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-appender.workspace = true
+tspm-core.workspace = true
+libc.workspace = true
+atty.workspace = true

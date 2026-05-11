@@ -1,0 +1,28 @@
+[package]
+name = "tspm-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "tspm"
+path = "src/main.rs"
+
+[dependencies]
+tokio.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+time.workspace = true
+tabled.workspace = true
+crossterm.workspace = true
+indicatif.workspace = true
+tspm-core.workspace = true
+tspm-events.workspace = true
+tspm-engine.workspace = true
+tspm-logging.workspace = true
+tspm-monitor.workspace = true
+tspm-deploy.workspace = true
+tspm-server.workspace = true

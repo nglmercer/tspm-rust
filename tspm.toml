@@ -1,0 +1,55 @@
+# TSPM Configuration Example
+# Save this file as tspm.toml in your project root
+
+[defaults]
+autorestart = true
+max_restarts = 10
+namespace = "production"
+
+[[processes]]
+name = "api-server"
+script = "bun"
+args = ["run", "src/index.ts"]
+instances = 2
+lb_strategy = "round-robin"
+namespace = "production"
+cluster_group = "api"
+
+[processes.env]
+NODE_ENV = "production"
+PORT = "3000"
+
+[[processes.health_check]]
+enabled = true
+protocol = "http"
+host = "localhost"
+port = 3000
+path = "/health"
+interval_ms = 30000
+timeout_ms = 5000
+retries = 3
+
+[[processes]]
+name = "worker"
+script = "bun"
+args = ["run", "src/worker.ts"]
+instances = 4
+namespace = "production"
+cluster_group = "workers"
+
+# Deployment configuration
+[deploy]
+repo = "https://github.com/user/app.git"
+
+[deploy.environments.production]
+host = "prod.example.com"
+user = "deploy"
+port = 22
+path = "/var/www/production"
+ref = "main"
+
+[[deploy.environments.production.pre_deploy]]
+command = "npm ci"
+
+[[deploy.environments.production.post_deploy]]
+command = "tspm restart --all"

@@ -1,0 +1,9 @@
+[package]
+name = "tspm-events"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+tokio.workspace = true
+tspm-core.workspace = true
