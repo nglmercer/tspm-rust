@@ -81,6 +81,41 @@ export const api = {
         });
         return res.json();
     },
+    async executeStream(command: string, cwd: string, onMessage: (msg: { type: string, data: any }) => void): Promise<EventSource> {
+        const res = await fetch(`${BASE}/execute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command, cwd: cwd || '.', stream: true }),
+        });
+        if (!res.ok) throw new Error('Failed to start execution');
+        
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error('No stream body');
+
+        const decoder = new TextDecoder();
+        (async () => {
+            let buffer = '';
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('event:')) {
+                        const [eventPart, dataPart] = line.split('\ndata:');
+                        const type = eventPart.replace('event:', '').trim();
+                        const data = dataPart?.trim();
+                        onMessage({ type, data });
+                    }
+                }
+            }
+        })();
+
+        return {} as any; // We don't really need the EventSource object if we handle reading ourselves
+    },
 
     // ─── Autocomplete ──────────────────────────────────
     async autocomplete(prefix: string, cwd: string): Promise<string[]> {

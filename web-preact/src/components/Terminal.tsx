@@ -1,77 +1,134 @@
-import { useState, useRef, useEffect } from 'preact/hooks';
+import { useRef, useEffect } from 'preact/hooks';
+import { Terminal as XTerm } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import '@xterm/xterm/css/xterm.css';
 import { api } from '../api/client';
-import { AnsiText } from './AnsiText';
 import styles from '@/styles/Terminal.module.css';
 
 export function Terminal() {
-    const [history, setHistory] = useState<string[]>(['TSPM Terminal — type commands below']);
-    const [input, setInput] = useState('');
-    const [cwd, setCwd] = useState('/');
-    const outputRef = useRef<HTMLDivElement>(null);
+    const terminalRef = useRef<HTMLDivElement>(null);
+    const xterm = useRef<XTerm | null>(null);
+    const fitAddon = useRef<FitAddon | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const cwdRef = useRef('/');
 
     useEffect(() => {
-        api.stats().then(r => {
-            if (r.success && (r.data as any)?.cwd) setCwd((r.data as any).cwd);
+        if (!terminalRef.current) return;
+
+        // Initialize xterm.js
+        const term = new XTerm({
+            cursorBlink: true,
+            theme: {
+                background: '#0a0a0a',
+                foreground: '#ffffff',
+                cursor: '#ffffff',
+                selectionBackground: 'rgba(255, 255, 255, 0.3)',
+                black: '#000000',
+                red: '#ff5555',
+                green: '#50fa7b',
+                yellow: '#f1fa8c',
+                blue: '#bd93f9',
+                magenta: '#ff79c6',
+                cyan: '#8be9fd',
+                white: '#bfbfbf',
+                brightBlack: '#4d4d4d',
+                brightRed: '#ff6e67',
+                brightGreen: '#5af78e',
+                brightYellow: '#f4f99d',
+                brightBlue: '#caa9fa',
+                brightMagenta: '#ff92d0',
+                brightCyan: '#9aedfe',
+                brightWhite: '#e6e6e6',
+            },
+            fontSize: 14,
+            fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, "Courier New", monospace',
+            convertEol: true,
         });
+
+        const fit = new FitAddon();
+        term.loadAddon(fit);
+        term.open(terminalRef.current);
+        fit.fit();
+
+        term.writeln('\x1b[1;34mTSPM Terminal\x1b[0m — type commands below');
+        
+        xterm.current = term;
+        fitAddon.current = fit;
+
+        api.stats().then(r => {
+            if (r.success && (r.data as any)?.cwd) {
+                cwdRef.current = (r.data as any).cwd;
+                term.write(`\x1b[1;32m${cwdRef.current}\x1b[0m$ `);
+            }
+        });
+
+        const handleResize = () => fit.fit();
+        window.addEventListener('resize', handleResize);
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            term.dispose();
+        };
     }, []);
 
-    useEffect(() => {
-        outputRef.current?.scrollTo(0, outputRef.current.scrollHeight);
-    }, [history]);
-
     const run = async (cmd: string) => {
-        if (!cmd.trim()) return;
-        setHistory(h => [...h, `${cwd}$ ${cmd}`]);
-        setInput('');
+        if (!cmd.trim() || !xterm.current) return;
+        
+        const term = xterm.current;
+        term.writeln(''); // Move to next line after command
+
         try {
-            const res = await api.execute(cmd, cwd);
-            if (res.output) setHistory(h => [...h, res.output.trimEnd()]);
-            if (res.error) setHistory(h => [...h, ...res.error.trimEnd().split('\n').map(l => `[stderr] ${l}`)]);
-            if (cmd.startsWith('cd ')) {
-                api.stats().then(r => {
-                    if (r.success && (r.data as any)?.cwd) setCwd((r.data as any).cwd);
-                });
-            }
+            const eventSource = await api.executeStream(cmd, cwdRef.current, (data) => {
+                if (data.type === 'output') {
+                    const payload = JSON.parse(data.data);
+                    term.write(payload.data);
+                } else if (data.type === 'cwd') {
+                    cwdRef.current = data.data;
+                } else if (data.type === 'complete') {
+                    term.write(`\r\n\x1b[1;32m${cwdRef.current}\x1b[0m$ `);
+                }
+            });
         } catch (e: any) {
-            setHistory(h => [...h, `Error: ${e.message}`]);
+            term.writeln(`\r\n\x1b[31mError: ${e.message}\x1b[0m`);
+            term.write(`\x1b[1;32m${cwdRef.current}\x1b[0m$ `);
         }
     };
 
     const handleKeyDown = async (e: KeyboardEvent) => {
-        if (e.key === 'Enter') { e.preventDefault(); await run(input); }
-        else if (e.key === 'Tab') {
+        if (e.key === 'Enter') {
+            const input = (e.target as HTMLInputElement);
+            const cmd = input.value;
+            input.value = '';
+            await run(cmd);
+        } else if (e.key === 'Tab') {
             e.preventDefault();
-            const prefix = input.split(' ').pop() || '';
-            const suggestions = await api.autocomplete(prefix, cwd);
+            const input = (e.target as HTMLInputElement);
+            const prefix = input.value.split(' ').pop() || '';
+            const suggestions = await api.autocomplete(prefix, cwdRef.current);
             if (suggestions.length === 1) {
-                const parts = input.split(' ');
+                const parts = input.value.split(' ');
                 parts[parts.length - 1] = suggestions[0];
-                setInput(parts.join(' '));
+                input.value = parts.join(' ');
             } else if (suggestions.length > 0) {
-                setHistory(h => [...h, suggestions.join('  ')]);
+                xterm.current?.writeln(`\r\n${suggestions.join('  ')}`);
+                xterm.current?.write(`\x1b[1;32m${cwdRef.current}\x1b[0m$ `);
             }
         }
     };
 
     return (
         <div class={styles.container}>
-            <div class={styles.output} ref={outputRef}>
-                {history.map((line, i) => (
-                    <div key={i} style={{ color: line.startsWith('[stderr]') ? 'var(--danger)' : line.startsWith(cwd) ? 'var(--text3)' : 'inherit' }}>
-                        <AnsiText text={line} />
-                    </div>
-                ))}
-            </div>
+            <div class={styles.xtermContainer} ref={terminalRef} />
             <div class={styles.inputRow}>
-                <span class={styles.prompt}>{cwd}$</span>
+                <span class={styles.prompt}>{cwdRef.current}$</span>
                 <input
+                    ref={inputRef}
                     class={styles.input}
-                    value={input}
-                    onInput={e => setInput((e.target as HTMLInputElement).value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Type a command..."
                     spellcheck={false}
                     autocomplete="off"
+                    autoFocus
                 />
             </div>
         </div>
