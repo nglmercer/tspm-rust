@@ -24,14 +24,14 @@ pub fn build_router() -> Router<Arc<AppState>> {
         .route("/ws", get(ws::ws_handler))
         // Processes
         .route("/api/v1/processes", get(processes::list_processes).post(processes::create_process))
-        .route("/api/v1/processes/{name}", get(processes::get_process).delete(processes::delete_process))
-        .route("/api/v1/processes/{name}/start", post(processes::start_process))
-        .route("/api/v1/processes/{name}/stop", post(processes::stop_process))
-        .route("/api/v1/processes/{name}/restart", post(processes::restart_process))
-        .route("/api/v1/processes/{name}/logs", get(processes::get_process_logs))
-        .route("/api/v1/processes/{name}/input", post(processes::send_input))
-        .route("/api/v1/processes/{name}/install", post(processes::install_process))
-        .route("/api/v1/processes/{name}/build", post(processes::build_process))
+        .route("/api/v1/processes/:name", get(processes::get_process).delete(processes::delete_process))
+        .route("/api/v1/processes/:name/start", post(processes::start_process))
+        .route("/api/v1/processes/:name/stop", post(processes::stop_process))
+        .route("/api/v1/processes/:name/restart", post(processes::restart_process))
+        .route("/api/v1/processes/:name/logs", get(processes::get_process_logs))
+        .route("/api/v1/processes/:name/input", post(processes::send_input))
+        .route("/api/v1/processes/:name/install", post(processes::install_process))
+        .route("/api/v1/processes/:name/build", post(processes::build_process))
         // System
         .route("/api/v1/status", get(system::get_status))
         .route("/api/v1/stats", get(system::get_stats))
@@ -41,11 +41,11 @@ pub fn build_router() -> Router<Arc<AppState>> {
         .route("/api/v1/autocomplete", post(system::autocomplete))
         // Dump
         .route("/api/v1/dump", get(dump::get_dump).put(dump::put_dump))
-        .route("/api/v1/dump/{name}", patch(dump::patch_dump).delete(dump::delete_dump))
+        .route("/api/v1/dump/:name", patch(dump::patch_dump).delete(dump::delete_dump))
         .route("/api/v1/dump/", delete(dump::delete_empty_dump))
         // Ports
         .route("/api/v1/ports", get(ports::get_ports))
-        .route("/api/v1/ports/{port}", post(kill_port))
+        .route("/api/v1/ports/:port", post(kill_port))
 }
 
 // Re-export kill_port to avoid moving too much code from ports.rs if needed,

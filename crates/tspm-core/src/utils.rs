@@ -15,28 +15,17 @@ pub fn get_augmented_path() -> String {
     // Common locations
     let mut extra_paths = vec![];
 
+    // Check current user home
     if let Some(home) = dirs::home_dir() {
-        // Bun
-        extra_paths.push(home.join(".bun/bin"));
-        // Cargo
-        extra_paths.push(home.join(".cargo/bin"));
-        // Local bin
-        extra_paths.push(home.join(".local/bin"));
-        // NVM (common locations)
-        let nvm_dir = home.join(".nvm/versions/node");
-        if nvm_dir.exists() {
-            if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
-                for entry in entries.flatten() {
-                    if entry.path().is_dir() {
-                        extra_paths.push(entry.path().join("bin"));
-                    }
-                }
-            }
+        add_user_paths(&home, &mut extra_paths);
+    }
+
+    // If running under sudo, also check the original user's home
+    if let Ok(sudo_user) = env::var("SUDO_USER") {
+        let user_home = PathBuf::from("/home").join(sudo_user);
+        if user_home.exists() {
+            add_user_paths(&user_home, &mut extra_paths);
         }
-        // FNM (Fast Node Manager)
-        extra_paths.push(home.join(".fnm"));
-        // Volta
-        extra_paths.push(home.join(".volta/bin"));
     }
 
     // System common locations that might be missing in some environments
@@ -54,6 +43,32 @@ pub fn get_augmented_path() -> String {
     }
 
     env::join_paths(paths).unwrap_or_default().to_string_lossy().to_string()
+}
+
+fn add_user_paths(home: &Path, paths: &mut Vec<PathBuf>) {
+    // Bun
+    paths.push(home.join(".bun/bin"));
+    // Cargo
+    paths.push(home.join(".cargo/bin"));
+    // Local bin
+    paths.push(home.join(".local/bin"));
+    // NVM (common locations)
+    let nvm_dir = home.join(".nvm/versions/node");
+    if nvm_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
+            for entry in entries.flatten() {
+                if entry.path().is_dir() {
+                    paths.push(entry.path().join("bin"));
+                }
+            }
+        }
+    }
+    // FNM (Fast Node Manager)
+    paths.push(home.join(".fnm"));
+    // Volta
+    paths.push(home.join(".volta/bin"));
+    // PNPM
+    paths.push(home.join(".local/share/pnpm"));
 }
 
 /// Detect if a directory has a package.json and return its content if it does

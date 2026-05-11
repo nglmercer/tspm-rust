@@ -86,7 +86,7 @@ pub async fn handle_restart(
 }
 
 pub async fn handle_reload(
-    config_path: &Path,
+    config_path: Option<&Path>,
     process_name: Option<&str>,
     all: bool,
     manager: &mut ProcessManager,
