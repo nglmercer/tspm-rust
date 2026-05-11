@@ -97,6 +97,26 @@ pub async fn delete_process(
     Ok(flat_json(serde_json::json!({"message": format!("Removed {name}")})))
 }
 
+pub async fn update_process(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    Json(body): Json<tspm_core::ProcessConfig>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let mut mgr = state.manager.lock().await;
+    mgr.update_process(&name, body.clone()).await.map_err(|e| server_err(e.to_string()))?;
+    mgr.start_process(&body.name).await.map_err(|e| server_err(e.to_string()))?;
+    
+    // Persist
+    let persistence = tspm_deploy::PersistenceManager::new();
+    if let Some(mut data) = persistence.load() {
+        data.processes.retain(|p| p.name != name && p.name != body.name);
+        data.processes.push(body.clone());
+        let _ = persistence.save(&data.processes);
+    }
+    
+    Ok(flat_json(serde_json::json!({"message": format!("Updated {}", body.name)})))
+}
+
 pub async fn get_process_logs(
     State(state): State<Arc<AppState>>, Path(name): Path<String>, Query(query): Query<LogsQuery>,
 ) -> Result<Json<Wrapped<serde_json::Value>>, (StatusCode, Json<ErrorResponse>)> {
@@ -105,7 +125,7 @@ pub async fn get_process_logs(
     let proc = mgr.get_process(&name).ok_or(not_found())?;
     let mut logs: Vec<serde_json::Value> = Vec::new();
 
-    let stdout_path = proc.config().stdout.clone().or_else(|| Some(tspm_core::get_default_log_path(&name, "logs")));
+    let stdout_path = proc.config().stdout.clone().or_else(|| Some(tspm_core::get_default_log_path(&proc.config().name, "logs")));
     if let Some(path) = stdout_path {
         if path.exists() {
             if let Ok(content) = std::fs::read_to_string(&path) {

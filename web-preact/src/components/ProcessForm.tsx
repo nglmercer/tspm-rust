@@ -6,9 +6,10 @@ import styles from '@/styles/ProcessForm.module.css';
 
 interface Props {
     onClose: () => void;
+    initialConfig?: ProcessConfig | null;
 }
 
-const fields: { name: string; label: string; placeholder?: string; type?: string }[] = [
+const fields: { name: keyof ProcessConfig; label: string; placeholder?: string; type?: string }[] = [
     { name: 'name', label: 'Name', placeholder: 'my-server' },
     { name: 'script', label: 'Script / Command', placeholder: 'bun run server.ts' },
     { name: 'args', label: 'Arguments', placeholder: '--port 3000' },
@@ -28,8 +29,19 @@ const fields: { name: string; label: string; placeholder?: string; type?: string
 
 const pathFields = new Set(['script', 'cwd', 'stdout', 'stderr']);
 
-export function ProcessForm({ onClose }: Props) {
-    const [form, setForm] = useState<Record<string, string>>({});
+export function ProcessForm({ onClose, initialConfig }: Props) {
+    const isEditing = !!initialConfig;
+    const [form, setForm] = useState<Record<string, string>>(() => {
+        if (!initialConfig) return {};
+        const f: Record<string, string> = {};
+        for (const [k, v] of Object.entries(initialConfig)) {
+            if (v !== undefined && v !== null) {
+                f[k] = Array.isArray(v) ? v.join(' ') : String(v);
+            }
+        }
+        return f;
+    });
+    
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [activeField, setActiveField] = useState('');
     const [error, setError] = useState('');
@@ -82,17 +94,22 @@ export function ProcessForm({ onClose }: Props) {
         };
 
         try {
-            await api.processes.create(config);
+            if (isEditing) {
+                // If editing, use the old name to target the update, but send the new config
+                await api.processes.update(initialConfig.name, config);
+            } else {
+                await api.processes.create(config);
+            }
             onClose();
         } catch (e: any) {
-            setError(e.message || 'Failed to create process');
+            setError(e.message || `Failed to ${isEditing ? 'update' : 'create'} process`);
         }
     };
 
     return (
         <div class="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
             <form class={styles.modal} onSubmit={handleSubmit}>
-                <h2>New Process</h2>
+                <h2>{isEditing ? 'Edit Process' : 'New Process'}</h2>
 
                 {error && <div style="color:var(--danger);margin-bottom:0.8rem;font-size:0.85rem">{error}</div>}
 
@@ -127,7 +144,7 @@ export function ProcessForm({ onClose }: Props) {
 
                 <div class={styles.formActions}>
                     <button type="button" class="btn btn-ghost" onClick={onClose}>Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Process</button>
+                    <button type="submit" class="btn btn-primary">{isEditing ? 'Save Changes' : 'Create Process'}</button>
                 </div>
             </form>
         </div>

@@ -1,6 +1,6 @@
 import type { ProcessStatus } from '../types';
 import styles from '@/styles/ProcessTable.module.css';
-import { IconPlay, IconSquare, IconRefresh, IconTrash } from './Icons';
+import { IconPlay, IconSquare, IconRefresh, IconTrash, IconEdit } from './Icons';
 
 interface Props {
     processes: ProcessStatus[];
@@ -8,7 +8,9 @@ interface Props {
     onStop: (name: string) => void;
     onRestart: (name: string) => void;
     onDelete: (name: string) => void;
+    onEdit: (name: string) => void;
 }
+
 
 function formatUptime(secs: number): string {
     if (secs < 60) return `${secs}s`;
@@ -25,7 +27,7 @@ function formatMemory(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function ProcessTable({ processes, onStart, onStop, onRestart, onDelete }: Props) {
+export function ProcessTable({ processes, onStart, onStop, onRestart, onDelete, onEdit }: Props) {
     if (processes.length === 0) {
         return (
             <div class="empty">
@@ -78,6 +80,9 @@ export function ProcessTable({ processes, onStart, onStop, onRestart, onDelete }
                                             <IconRefresh size={14} />
                                         </button>
                                     )}
+                                    <button class="btn btn-sm btn-ghost" title="Edit" onClick={() => onEdit(p.name)}>
+                                        <IconEdit size={14} />
+                                    </button>
                                     <button class="btn btn-sm btn-danger" title="Delete" onClick={() => onDelete(p.name)}>
                                         <IconTrash size={14} />
                                     </button>
@@ -90,3 +95,4 @@ export function ProcessTable({ processes, onStart, onStop, onRestart, onDelete }
         </div>
     );
 }
+

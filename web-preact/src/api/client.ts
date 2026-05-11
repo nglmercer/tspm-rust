@@ -31,6 +31,9 @@ export const api = {
         create(config: ProcessConfig): Promise<ApiResponse<null>> {
             return request('/processes', { method: 'POST', body: JSON.stringify(config) });
         },
+        update(name: string, config: ProcessConfig): Promise<ApiResponse<null>> {
+            return request(`/processes/${encodeURIComponent(name)}`, { method: 'PUT', body: JSON.stringify(config) });
+        },
         delete(name: string): Promise<ApiResponse<null>> {
             return request(`/processes/${encodeURIComponent(name)}`, { method: 'DELETE' });
         },

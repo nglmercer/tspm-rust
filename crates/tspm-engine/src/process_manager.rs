@@ -98,6 +98,13 @@ impl ProcessManager {
         None
     }
 
+    /// Update a process configuration: stops the old process and starts a new one with the new config
+    pub async fn update_process(&mut self, name: &str, config: ProcessConfig) -> Result<(), String> {
+        let key = self.resolve_name(name).ok_or_else(|| format!("Process not found: {}", name))?;
+        self.remove_process(&key).await?;
+        self.add_process(config).await
+    }
+
     /// Get a managed process by name (supports fuzzy matching by basename)
     pub fn get_process(&self, name: &str) -> Option<&ManagedProcess> {
         self.resolve_name(name).and_then(|key| self.registry.get(&key))
