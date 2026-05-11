@@ -283,8 +283,6 @@ pub struct ProcessConfig {
     pub instance_var: Option<String>,
     #[serde(default)]
     pub namespace: Option<String>,
-    pub memory_usage: Option<u64>,
-    pub cpu_usage: Option<f64>,
     #[serde(default)]
     pub cluster_group: Option<String>,
     #[serde(default)]
@@ -402,8 +400,6 @@ pub struct TspmConfig {
     pub defaults: Option<ProcessConfig>,
     #[serde(default)]
     pub namespace: Option<String>,
-    pub memory_usage: Option<u64>,
-    pub cpu_usage: Option<f64>,
     #[serde(default = "default_log_dir")]
     pub log_dir: PathBuf,
     #[serde(default = "default_pid_dir")]
