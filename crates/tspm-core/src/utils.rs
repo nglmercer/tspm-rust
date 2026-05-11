@@ -69,6 +69,10 @@ fn add_user_paths(home: &Path, paths: &mut Vec<PathBuf>) {
     paths.push(home.join(".volta/bin"));
     // PNPM
     paths.push(home.join(".local/share/pnpm"));
+    // Generic bin
+    paths.push(home.join("bin"));
+    // NPM global
+    paths.push(home.join(".npm-global/bin"));
 }
 
 /// Detect if a directory has a package.json and return its content if it does
