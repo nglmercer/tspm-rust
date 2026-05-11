@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
+use serde::{Deserialize, Serialize};
 use tspm_core::ProcessMetrics;
 
 /// Previous CPU sample for delta calculation
@@ -12,6 +13,15 @@ struct CpuSample {
 /// Tracks per-PID CPU samples for delta-based percentage calculation
 pub struct StatsCollector {
     samples: Mutex<HashMap<u32, CpuSample>>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SystemMetrics {
+    pub cpu_percent: f64,
+    pub memory_used_bytes: u64,
+    pub memory_total_bytes: u64,
+    pub uptime_secs: u64,
+    pub process_count: usize,
 }
 
 impl StatsCollector {
@@ -59,8 +69,87 @@ impl StatsCollector {
 
         #[cfg(not(target_os = "linux"))]
         {
+            let _ = pid;
             Some(ProcessMetrics { cpu_percent: 0.0, memory_bytes: 0, uptime_secs: 0, pid: Some(pid) })
         }
+    }
+
+    pub async fn get_system_stats(&self) -> Option<SystemMetrics> {
+        #[cfg(target_os = "linux")]
+        {
+            let cpu = self.read_system_cpu().await.unwrap_or(0.0);
+            let (mem_used, mem_total) = self.read_system_memory().await.unwrap_or((0, 0));
+            let uptime = tokio::fs::read_to_string("/proc/uptime").await.ok()?
+                .split_whitespace().next()?.split('.').next()?.parse::<u64>().ok()?;
+
+            Some(SystemMetrics {
+                cpu_percent: cpu,
+                memory_used_bytes: mem_used,
+                memory_total_bytes: mem_total,
+                uptime_secs: uptime,
+                process_count: 0, // Will be filled by the caller (manager)
+            })
+        }
+        #[cfg(not(target_os = "linux"))]
+        { None }
+    }
+
+    #[cfg(target_os = "linux")]
+    async fn read_system_cpu(&self) -> Option<f64> {
+        let stat = tokio::fs::read_to_string("/proc/stat").await.ok()?;
+        let line = stat.lines().next()?;
+        let parts: Vec<u64> = line.split_whitespace().skip(1).filter_map(|s| s.parse().ok()).collect();
+        if parts.len() < 4 { return None; }
+
+        let idle = parts[3];
+        let total: u64 = parts.iter().sum();
+
+        // Need delta for real percentage
+        let mut samples = self.samples.lock().unwrap();
+        // Use a special key (u32::MAX) for system CPU
+        let res = if let Some(prev) = samples.get(&u32::MAX) {
+            let prev_idle = prev.total_jiffies; // Hijack fields for system stats
+            let prev_total = prev.wall_clock_ms;
+
+            let delta_idle = idle.saturating_sub(prev_idle);
+            let delta_total = total.saturating_sub(prev_total);
+
+            if delta_total > 0 {
+                let usage = 100.0 * (1.0 - (delta_idle as f64 / delta_total as f64));
+                usage.max(0.0).min(100.0)
+            } else {
+                0.0
+            }
+        } else {
+            0.0
+        };
+
+        samples.insert(u32::MAX, CpuSample { total_jiffies: idle, wall_clock_ms: total });
+        Some(res)
+    }
+
+    #[cfg(target_os = "linux")]
+    async fn read_system_memory(&self) -> Option<(u64, u64)> {
+        let meminfo = tokio::fs::read_to_string("/proc/meminfo").await.ok()?;
+        let mut total = 0u64;
+        let mut free = 0u64;
+        let mut buffers = 0u64;
+        let mut cached = 0u64;
+
+        for line in meminfo.lines() {
+            if line.starts_with("MemTotal:") {
+                total = line.split_whitespace().nth(1)?.parse::<u64>().ok()? * 1024;
+            } else if line.starts_with("MemFree:") {
+                free = line.split_whitespace().nth(1)?.parse::<u64>().ok()? * 1024;
+            } else if line.starts_with("Buffers:") {
+                buffers = line.split_whitespace().nth(1)?.parse::<u64>().ok()? * 1024;
+            } else if line.starts_with("Cached:") {
+                cached = line.split_whitespace().nth(1)?.parse::<u64>().ok()? * 1024;
+            }
+        }
+
+        let used = total.saturating_sub(free).saturating_sub(buffers).saturating_sub(cached);
+        Some((used, total))
     }
 
     #[cfg(target_os = "linux")]
@@ -115,39 +204,4 @@ impl StatsCollector {
 
 impl Default for StatsCollector {
     fn default() -> Self { Self::new() }
-}
-
-/// Legacy stateless API — returns average CPU since process start
-pub struct ProcessStats;
-
-impl ProcessStats {
-    pub async fn get(pid: u32) -> Option<ProcessMetrics> {
-        #[cfg(target_os = "linux")]
-        {
-            let stat = tokio::fs::read_to_string(format!("/proc/{pid}/stat")).await.ok()?;
-            let parts: Vec<&str> = stat.split_whitespace().collect();
-            let utime: u64 = parts.get(13)?.parse().ok()?;
-            let stime: u64 = parts.get(14)?.parse().ok()?;
-            let _total_time = utime + stime;
-
-            let status = tokio::fs::read_to_string(format!("/proc/{pid}/status")).await.ok()?;
-            let mut rss = 0u64;
-            for line in status.lines() {
-                if line.starts_with("VmRSS:") {
-                    rss = line.split_whitespace().nth(1)?.parse::<u64>().ok()? * 1024;
-                    break;
-                }
-            }
-
-            let uptime_str = tokio::fs::read_to_string("/proc/uptime").await.ok()?;
-            let uptime_secs: u64 = uptime_str.split_whitespace().next()?.split('.').next()?.parse().ok()?;
-            let starttime: u64 = parts.get(21)?.parse().ok()?;
-            let clk_tck = unsafe { libc::sysconf(libc::_SC_CLK_TCK) as u64 };
-            let proc_uptime = if clk_tck > 0 { uptime_secs.saturating_sub(starttime / clk_tck) } else { 0 };
-
-            Some(ProcessMetrics { cpu_percent: 0.0, memory_bytes: rss, uptime_secs: proc_uptime, pid: Some(pid) })
-        }
-        #[cfg(not(target_os = "linux"))]
-        { Some(ProcessMetrics { cpu_percent: 0.0, memory_bytes: 0, uptime_secs: 0, pid: Some(pid) }) }
-    }
 }

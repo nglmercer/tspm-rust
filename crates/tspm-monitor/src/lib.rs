@@ -1,5 +1,5 @@
 pub mod stats;
 pub mod health;
 
-pub use stats::{ProcessStats, StatsCollector};
+pub use stats::{StatsCollector, SystemMetrics};
 pub use health::HealthCheckRunner;

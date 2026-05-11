@@ -70,6 +70,7 @@ export interface PortInfo {
 export interface SystemStats {
   cpu: number;
   memory: number;
+  memoryTotal?: number;
   uptime: number;
   processCount: number;
   cwd?: string;
