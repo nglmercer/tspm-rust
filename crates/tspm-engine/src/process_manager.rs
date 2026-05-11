@@ -75,14 +75,38 @@ impl ProcessManager {
         Ok(())
     }
 
-    /// Get a managed process by name
-    pub fn get_process(&self, name: &str) -> Option<&ManagedProcess> {
-        self.registry.get(name)
+    /// Resolve a process name: tries exact match first, then matches by
+    /// display name (basename of path) or config name. Returns the registry key.
+    pub fn resolve_name(&self, name: &str) -> Option<String> {
+        // 1. Exact match on registry key
+        if self.registry.has(name) {
+            return Some(name.to_string());
+        }
+        // 2. Match by display_name (basename) or config().name
+        for proc in self.registry.get_all() {
+            let display = proc.display_name();
+            let cfg_name = &proc.config().name;
+            // display_name is the registry key which could be a path
+            let basename = std::path::Path::new(&display)
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
+            if basename == name || cfg_name == name || display == name {
+                return Some(display);
+            }
+        }
+        None
     }
 
-    /// Get a managed process mutably by name
+    /// Get a managed process by name (supports fuzzy matching by basename)
+    pub fn get_process(&self, name: &str) -> Option<&ManagedProcess> {
+        self.resolve_name(name).and_then(|key| self.registry.get(&key))
+    }
+
+    /// Get a managed process mutably by name (supports fuzzy matching by basename)
     pub fn get_process_mut(&mut self, name: &str) -> Option<&mut ManagedProcess> {
-        self.registry.get_mut(name)
+        let key = self.resolve_name(name)?;
+        self.registry.get_mut(&key)
     }
 
     /// Get all processes for a base name (including instances)
@@ -90,7 +114,15 @@ impl ProcessManager {
         self.registry
             .get_all()
             .into_iter()
-            .filter(|p| p.config().name == base_name)
+            .filter(|p| {
+                let cfg_name = &p.config().name;
+                let display = p.display_name();
+                let basename = std::path::Path::new(&display)
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                cfg_name == base_name || basename == base_name || display == base_name
+            })
             .collect()
     }
 
@@ -207,26 +239,30 @@ impl ProcessManager {
 
     /// Remove a process from management
     pub async fn remove_process(&mut self, name: &str) -> Result<(), String> {
+        // Resolve the name (supports basename matching)
+        let resolved = self.resolve_name(name).unwrap_or_else(|| name.to_string());
+        let resolved_ref = resolved.as_str();
+
         // Stop instances first
         let procs: Vec<String> = self
-            .get_processes_by_base_name(name)
+            .get_processes_by_base_name(resolved_ref)
             .into_iter()
             .map(|p| p.display_name())
             .collect();
 
-        let mut base_name = name.to_string();
+        let mut base_name = resolved.clone();
         if !procs.is_empty() {
-            base_name = procs[0].split('-').next().unwrap_or(name).to_string();
-            for name in &procs {
-                if let Some(proc) = self.registry.get_mut(name) {
+            base_name = procs[0].split('-').next().unwrap_or(resolved_ref).to_string();
+            for pname in &procs {
+                if let Some(proc) = self.registry.get_mut(pname) {
                     proc.stop().await?;
                 }
-                self.registry.delete(name);
+                self.registry.delete(pname);
             }
-        } else if let Some(proc) = self.registry.get_mut(name) {
+        } else if let Some(proc) = self.registry.get_mut(resolved_ref) {
             base_name = proc.config().name.clone();
             proc.stop().await?;
-            self.registry.delete(name);
+            self.registry.delete(resolved_ref);
         }
 
         // Remove from cluster
@@ -277,12 +313,9 @@ impl ProcessManager {
         groups
     }
 
-    /// Check if a process exists
+    /// Check if a process exists (supports fuzzy matching by basename)
     pub fn has_process(&self, name: &str) -> bool {
-        if self.registry.has(name) {
-            return true;
-        }
-        self.registry.get_all().into_iter().any(|p| p.config().name == name)
+        self.resolve_name(name).is_some()
     }
 
     /// Scale instances for a process
