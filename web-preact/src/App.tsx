@@ -9,6 +9,15 @@ import { ProcessForm } from './components/ProcessForm';
 import { PortsView } from './components/PortsView';
 import { StatsBar } from './components/StatsBar';
 import { Dialog } from './components/Dialog';
+import { 
+    IconActivity, 
+    IconFileText, 
+    IconTerminal, 
+    IconPlug, 
+    IconZap, 
+    IconPlus, 
+    IconRefresh 
+} from './components/Icons';
 import type { WsMessage, ProcessLogEntry, AppPage } from './types';
 import styles from './App.module.css';
 
@@ -42,21 +51,21 @@ export function App() {
         <div class={styles.app}>
             <aside class={styles.sidebar}>
                 <div class={styles.logo}>
-                    <span class={styles.logoIcon}>⚡</span>
+                    <span class={styles.logoIcon}><IconZap size={24} /></span>
                     <span class={styles.logoText}>TSPM</span>
                 </div>
                 <nav class={styles.nav}>
                     <button class={navClass('processes')} onClick={() => setPage('processes')}>
-                        <span>📋</span> Processes
+                        <IconActivity size={18} /> Processes
                     </button>
                     <button class={navClass('logs')} onClick={() => setPage('logs')}>
-                        <span>📜</span> Logs
+                        <IconFileText size={18} /> Logs
                     </button>
                     <button class={navClass('terminal')} onClick={() => setPage('terminal')}>
-                        <span>💻</span> Terminal
+                        <IconTerminal size={18} /> Terminal
                     </button>
                     <button class={navClass('ports')} onClick={() => setPage('ports')}>
-                        <span>🔌</span> Ports
+                        <IconPlug size={18} /> Ports
                     </button>
                 </nav>
                 <StatsBar stats={systemStats} />
@@ -68,10 +77,12 @@ export function App() {
                     <div class={styles.topbarActions}>
                         {page === 'processes' && (
                             <button class="btn btn-primary" onClick={() => setShowForm(true)}>
-                                + New Process
+                                <IconPlus size={18} /> New Process
                             </button>
                         )}
-                        <button class="btn btn-ghost" onClick={refresh}>Refresh</button>
+                        <button class="btn btn-ghost" onClick={refresh}>
+                            <IconRefresh size={18} /> Refresh
+                        </button>
                     </div>
                 </header>
 

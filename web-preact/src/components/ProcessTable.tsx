@@ -1,5 +1,6 @@
 import type { ProcessStatus } from '../types';
 import styles from '@/styles/ProcessTable.module.css';
+import { IconPlay, IconSquare, IconRefresh, IconTrash } from './Icons';
 
 interface Props {
     processes: ProcessStatus[];
@@ -28,7 +29,7 @@ export function ProcessTable({ processes, onStart, onStop, onRestart, onDelete }
     if (processes.length === 0) {
         return (
             <div class="empty">
-                <span style="font-size:2rem">📦</span>
+                <IconRefresh size={48} style="opacity: 0.2; margin-bottom: 1rem" />
                 <p>No processes running</p>
                 <p style="font-size:0.78rem">Click "+ New Process" to add one</p>
             </div>
@@ -62,10 +63,24 @@ export function ProcessTable({ processes, onStart, onStop, onRestart, onDelete }
                             <td class="mono">{p.restartCount}</td>
                             <td>
                                 <div class={styles.actions}>
-                                    {p.state === 'stopped' && <button class="btn btn-sm btn-primary" onClick={() => onStart(p.name)}>Start</button>}
-                                    {p.state === 'running' && <button class="btn btn-sm btn-ghost" onClick={() => onStop(p.name)}>Stop</button>}
-                                    {p.state === 'running' && <button class="btn btn-sm btn-ghost" onClick={() => onRestart(p.name)}>Restart</button>}
-                                    <button class="btn btn-sm btn-danger" onClick={() => onDelete(p.name)}>×</button>
+                                    {p.state === 'stopped' && (
+                                        <button class="btn btn-sm btn-primary" title="Start" onClick={() => onStart(p.name)}>
+                                            <IconPlay size={14} />
+                                        </button>
+                                    )}
+                                    {p.state === 'running' && (
+                                        <button class="btn btn-sm btn-ghost" title="Stop" onClick={() => onStop(p.name)}>
+                                            <IconSquare size={14} />
+                                        </button>
+                                    )}
+                                    {p.state === 'running' && (
+                                        <button class="btn btn-sm btn-ghost" title="Restart" onClick={() => onRestart(p.name)}>
+                                            <IconRefresh size={14} />
+                                        </button>
+                                    )}
+                                    <button class="btn btn-sm btn-danger" title="Delete" onClick={() => onDelete(p.name)}>
+                                        <IconTrash size={14} />
+                                    </button>
                                 </div>
                             </td>
                         </tr>

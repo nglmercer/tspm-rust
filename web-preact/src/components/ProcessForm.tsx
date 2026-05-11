@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'preact/hooks';
 import { api } from '../api/client';
 import type { ProcessConfig } from '../types';
+import { IconFolder, IconFile } from './Icons';
 import styles from '@/styles/ProcessForm.module.css';
 
 interface Props {
@@ -113,7 +114,7 @@ export function ProcessForm({ onClose }: Props) {
                                         <ul class={styles.autocompleteDrop}>
                                             {suggestions.map((s, i) => (
                                                 <li key={i} onMouseDown={e => { e.preventDefault(); applySuggestion(s); }}>
-                                                    {s.endsWith('/') ? '📁' : '📄'} {s}
+                                                    {s.endsWith('/') ? <IconFolder size={14} /> : <IconFile size={14} />} {s}
                                                 </li>
                                             ))}
                                         </ul>
