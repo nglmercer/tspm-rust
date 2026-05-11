@@ -18,12 +18,14 @@ import {
     IconPlus, 
     IconRefresh 
 } from './components/Icons';
-import type { WsMessage, ProcessLogEntry, AppPage } from './types';
+import type { WsMessage, ProcessLogEntry, AppPage, ProcessConfig } from './types';
+import { api } from './api/client';
 import styles from './App.module.css';
 
 export function App() {
     const [page, setPage] = useState<AppPage>('processes');
     const [showForm, setShowForm] = useState(false);
+    const [editingConfig, setEditingConfig] = useState<ProcessConfig | null>(null);
     const [logEntries, setLogEntries] = useState<ProcessLogEntry[]>([]);
 
     const { processes, updateFromWs: updateProcs, startProcess, stopProcess, restartProcess, deleteProcess, fetch: refresh } = useProcesses();
@@ -44,6 +46,21 @@ export function App() {
     }, [updateProcs, updateStats]);
 
     useWebSocket(onWsMessage);
+
+    const handleEdit = async (name: string) => {
+        try {
+            const res = await api.dump.get();
+            const processConfig = res.data?.processes.find(p => p.name === name);
+            if (processConfig) {
+                setEditingConfig(processConfig);
+                setShowForm(true);
+            } else {
+                alert(`Could not find config for process ${name}`);
+            }
+        } catch (e) {
+            alert('Failed to fetch process configuration');
+        }
+    };
 
     const navClass = (p: AppPage) => `${styles.navItem} ${page === p ? styles.active : ''}`;
 
@@ -76,7 +93,7 @@ export function App() {
                     <h1>{page === 'processes' ? 'Processes' : page === 'logs' ? 'Logs' : page === 'terminal' ? 'Terminal' : 'Ports'}</h1>
                     <div class={styles.topbarActions}>
                         {page === 'processes' && (
-                            <button class="btn btn-primary" onClick={() => setShowForm(true)}>
+                            <button class="btn btn-primary" onClick={() => { setEditingConfig(null); setShowForm(true); }}>
                                 <IconPlus size={18} /> New Process
                             </button>
                         )}
@@ -94,6 +111,7 @@ export function App() {
                             onStop={stopProcess}
                             onRestart={restartProcess}
                             onDelete={deleteProcess}
+                            onEdit={handleEdit}
                         />
                     )}
                     {page === 'logs' && <LogsViewer entries={logEntries} processes={processes} onClear={() => setLogEntries([])} />}
@@ -102,8 +120,9 @@ export function App() {
                 </div>
             </main>
 
-            {showForm && <ProcessForm onClose={() => { setShowForm(false); refresh(); }} />}
+            {showForm && <ProcessForm onClose={() => { setShowForm(false); setEditingConfig(null); refresh(); }} initialConfig={editingConfig} />}
             <Dialog />
         </div>
     );
 }
+
