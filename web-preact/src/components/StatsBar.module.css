@@ -1,0 +1,16 @@
+.statsBar {
+  margin-top: auto;
+  padding: 0.8rem;
+  background: var(--surface2);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: var(--text3);
+}
+
+.stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+
+.statValue { color: var(--text2); font-weight: 600; }

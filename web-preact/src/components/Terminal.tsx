@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { api } from '../api/client';
+import styles from './Terminal.module.css';
 
 export function Terminal() {
     const [history, setHistory] = useState<string[]>(['TSPM Terminal — type commands below']);
@@ -26,7 +27,6 @@ export function Terminal() {
             if (res.output) setHistory(h => [...h, res.output.trimEnd()]);
             if (res.error) setHistory(h => [...h, ...res.error.trimEnd().split('\n').map(l => `[stderr] ${l}`)]);
             if (cmd.startsWith('cd ')) {
-                // Try to update cwd from the stats endpoint
                 api.stats().then(r => {
                     if (r.success && (r.data as any)?.cwd) setCwd((r.data as any).cwd);
                 });
@@ -53,18 +53,18 @@ export function Terminal() {
     };
 
     return (
-        <div class="terminal-container">
-            <div class="terminal-output" ref={outputRef}>
+        <div class={styles.container}>
+            <div class={styles.output} ref={outputRef}>
                 {history.map((line, i) => (
                     <div key={i} style={{ color: line.startsWith('[stderr]') ? 'var(--danger)' : line.startsWith(cwd) ? 'var(--text3)' : 'inherit' }}>
                         {line}
                     </div>
                 ))}
             </div>
-            <div class="terminal-input-row">
-                <span class="terminal-prompt">{cwd}$</span>
+            <div class={styles.inputRow}>
+                <span class={styles.prompt}>{cwd}$</span>
                 <input
-                    class="terminal-input"
+                    class={styles.input}
                     value={input}
                     onInput={e => setInput((e.target as HTMLInputElement).value)}
                     onKeyDown={handleKeyDown}

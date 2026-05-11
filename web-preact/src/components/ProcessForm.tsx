@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'preact/hooks';
 import { api } from '../api/client';
 import type { ProcessConfig } from '../types';
+import styles from './ProcessForm.module.css';
 
 interface Props {
     onClose: () => void;
@@ -37,7 +38,6 @@ export function ProcessForm({ onClose }: Props) {
         setError('');
 
         if (pathFields.has(field) && value) {
-            const prefix = value.includes('/') ? value.split('/').pop() || value : value;
             const suggestions = await api.autocomplete(value, form.cwd || '.');
             setSuggestions(suggestions);
             setActiveField(field);
@@ -90,7 +90,7 @@ export function ProcessForm({ onClose }: Props) {
 
     return (
         <div class="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-            <form class="modal" onSubmit={handleSubmit}>
+            <form class={styles.modal} onSubmit={handleSubmit}>
                 <h2>New Process</h2>
 
                 {error && <div style="color:var(--danger);margin-bottom:0.8rem;font-size:0.85rem">{error}</div>}
@@ -99,9 +99,9 @@ export function ProcessForm({ onClose }: Props) {
                     {fields.map(f => {
                         const isPath = pathFields.has(f.name);
                         return (
-                            <div class="form-group" key={f.name} style={f.name === 'script' || f.name === 'name' ? 'grid-column:1/-1' : ''}>
+                            <div class={styles.formGroup} key={f.name} style={f.name === 'script' || f.name === 'name' ? 'grid-column:1/-1' : ''}>
                                 <label>{f.label}</label>
-                                <div class="autocomplete-wrap">
+                                <div class={styles.autocompleteWrap}>
                                     <input
                                         type={f.type === 'number' ? 'number' : 'text'}
                                         placeholder={f.placeholder}
@@ -110,7 +110,7 @@ export function ProcessForm({ onClose }: Props) {
                                         autocomplete="off"
                                     />
                                     {isPath && activeField === f.name && suggestions.length > 0 && (
-                                        <ul class="autocomplete-drop">
+                                        <ul class={styles.autocompleteDrop}>
                                             {suggestions.map((s, i) => (
                                                 <li key={i} onMouseDown={e => { e.preventDefault(); applySuggestion(s); }}>
                                                     {s.endsWith('/') ? '📁' : '📄'} {s}
@@ -124,7 +124,7 @@ export function ProcessForm({ onClose }: Props) {
                     })}
                 </div>
 
-                <div class="form-actions">
+                <div class={styles.formActions}>
                     <button type="button" class="btn btn-ghost" onClick={onClose}>Cancel</button>
                     <button type="submit" class="btn btn-primary">Create Process</button>
                 </div>

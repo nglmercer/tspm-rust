@@ -1,4 +1,5 @@
 import type { ProcessStatus } from '../types';
+import styles from './ProcessTable.module.css';
 
 interface Props {
     processes: ProcessStatus[];
@@ -60,7 +61,7 @@ export function ProcessTable({ processes, onStart, onStop, onRestart, onDelete }
                             <td class="mono">{formatUptime(p.uptime)}</td>
                             <td class="mono">{p.restartCount}</td>
                             <td>
-                                <div class="actions">
+                                <div class={styles.actions}>
                                     {p.state === 'stopped' && <button class="btn btn-sm btn-primary" onClick={() => onStart(p.name)}>Start</button>}
                                     {p.state === 'running' && <button class="btn btn-sm btn-ghost" onClick={() => onStop(p.name)}>Stop</button>}
                                     {p.state === 'running' && <button class="btn btn-sm btn-ghost" onClick={() => onRestart(p.name)}>Restart</button>}

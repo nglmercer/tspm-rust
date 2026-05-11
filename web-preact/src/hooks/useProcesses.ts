@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { api } from '../api/client';
 import type { ProcessStatus } from '../types';
+import { dialog } from '../components/Dialog';
 
 export function useProcesses() {
     const [processes, setProcesses] = useState<ProcessStatus[]>([]);
@@ -41,7 +42,13 @@ export function useProcesses() {
     }, [fetch]);
 
     const deleteProcess = useCallback(async (name: string) => {
-        if (!confirm(`Delete process "${name}"?`)) return;
+        const ok = await dialog.confirm(
+            'Delete Process', 
+            `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+            'Delete',
+            'Cancel'
+        );
+        if (!ok) return;
         await api.processes.delete(name);
         fetch();
     }, [fetch]);

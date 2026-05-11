@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { api } from '../api/client';
 import type { PortInfo } from '../types';
+import { dialog } from './Dialog';
 
 export function PortsView() {
     const [ports, setPorts] = useState<PortInfo[]>([]);
@@ -22,7 +23,8 @@ export function PortsView() {
     useEffect(() => { fetch(); }, [fetch]);
 
     const kill = async (port: number) => {
-        if (!confirm(`Kill the process on port ${port}?`)) return;
+        const ok = await dialog.confirm('Kill Port', `Are you sure you want to kill process on port ${port}?`);
+        if (!ok) return;
         setError('');
         try {
             await api.ports.kill(port);

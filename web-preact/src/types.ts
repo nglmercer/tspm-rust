@@ -1,7 +1,12 @@
+/**
+ * Process related types
+ */
+export type ProcessState = 'running' | 'stopped' | 'errored' | 'restarting';
+
 export interface ProcessStatus {
   name: string;
   pid?: number;
-  state: string;
+  state: ProcessState;
   restartCount: number;
   uptime: number;
   instanceId: number;
@@ -10,10 +15,10 @@ export interface ProcessStatus {
 }
 
 export interface ProcessLogEntry {
-  timestamp?: string;
-  processName?: string;
-  message?: string;
-  type?: string;
+  timestamp: string;
+  processName: string;
+  message: string;
+  type: 'stdout' | 'stderr';
 }
 
 export interface ProcessConfig {
@@ -43,7 +48,7 @@ export interface ProcessConfig {
 
 export interface HealthCheckConfig {
   enabled?: boolean;
-  protocol?: string;
+  protocol?: 'http' | 'https' | 'tcp';
   host?: string;
   port?: number;
   path?: string;
@@ -52,6 +57,9 @@ export interface HealthCheckConfig {
   retries?: number;
 }
 
+/**
+ * System and Network types
+ */
 export interface PortInfo {
   port: number;
   pid: number;
@@ -64,20 +72,46 @@ export interface SystemStats {
   memory: number;
   uptime: number;
   processCount: number;
+  cwd?: string;
 }
 
-export interface ApiResponse<T> {
+/**
+ * API and WebSocket types
+ */
+export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
   message?: string;
 }
 
-export interface WsMessage {
-  type: 'process:update' | 'process:log' | 'system:stats';
-  payload: any;
+export type WsMessage =
+  | { type: 'process:update'; payload: { processes: ProcessStatus[] } }
+  | { type: 'process:log'; payload: ProcessLogEntry }
+  | { type: 'system:stats'; payload: SystemStats };
+
+/**
+ * UI State types
+ */
+export type AppPage = 'processes' | 'logs' | 'terminal' | 'ports';
+
+export interface DialogOptions {
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
 }
 
+export interface DialogState extends DialogOptions {
+  show: boolean;
+  type: 'alert' | 'confirm';
+  onConfirm?: () => void;
+  onCancel?: () => void;
+}
+
+/**
+ * Form definitions
+ */
 export interface FormField {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'string[]' | 'select';

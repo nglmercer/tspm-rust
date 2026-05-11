@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import type { ProcessLogEntry, ProcessStatus } from '../types';
+import styles from './LogsViewer.module.css';
 
 interface Props {
     entries: ProcessLogEntry[];
@@ -21,8 +22,8 @@ export function LogsViewer({ entries, processes, onClear }: Props) {
         : entries.filter(e => e.processName === filter);
 
     return (
-        <div class="logs-container">
-            <div class="logs-header">
+        <div class={styles.container}>
+            <div class={styles.header}>
                 <div style="display:flex;gap:0.5rem;align-items:center">
                     <select
                         value={filter}
@@ -30,7 +31,7 @@ export function LogsViewer({ entries, processes, onClear }: Props) {
                         style="padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font:inherit;font-size:0.82rem"
                     >
                         <option value="all">All processes</option>
-                        {processes.map(p => <option value={p.name}>{p.name}</option>)}
+                        {processes.map(p => <option value={p.name} key={p.name}>{p.name}</option>)}
                     </select>
                     <span class="state-badge">{filtered.length} lines</span>
                 </div>
@@ -41,13 +42,13 @@ export function LogsViewer({ entries, processes, onClear }: Props) {
                     <button class="btn btn-sm btn-ghost" onClick={onClear}>Clear</button>
                 </div>
             </div>
-            <div class="logs-output">
+            <div class={styles.output}>
                 {filtered.length === 0 && <div class="empty"><p>No logs yet</p></div>}
                 {filtered.map((e, i) => (
-                    <div class="log-line" key={i}>
-                        <span class="log-time">{e.timestamp || '--:--:--'}</span>
-                        <span class="log-proc" title={e.processName}>{e.processName?.split('/').pop() || '?'}</span>
-                        <span class={`log-msg ${e.type === 'stderr' ? 'stderr' : ''}`}>{e.message}</span>
+                    <div class={styles.line} key={i}>
+                        <span class={styles.time}>{e.timestamp || '--:--:--'}</span>
+                        <span class={styles.proc} title={e.processName}>{e.processName?.split('/').pop() || '?'}</span>
+                        <span class={`${styles.msg} ${e.type === 'stderr' ? styles.stderr : ''}`}>{e.message}</span>
                     </div>
                 ))}
                 <div ref={bottomRef} />

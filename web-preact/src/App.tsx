@@ -7,12 +7,12 @@ import { Terminal } from './components/Terminal';
 import { ProcessForm } from './components/ProcessForm';
 import { PortsView } from './components/PortsView';
 import { StatsBar } from './components/StatsBar';
-import type { WsMessage, ProcessLogEntry, SystemStats } from './types';
-
-type Page = 'processes' | 'logs' | 'terminal' | 'ports';
+import { Dialog } from './components/Dialog';
+import type { WsMessage, ProcessLogEntry, SystemStats, AppPage } from './types';
+import styles from './App.module.css';
 
 export function App() {
-    const [page, setPage] = useState<Page>('processes');
+    const [page, setPage] = useState<AppPage>('processes');
     const [showForm, setShowForm] = useState(false);
     const [systemStats, setSystemStats] = useState<SystemStats>({ cpu: 0, memory: 0, uptime: 0, processCount: 0 });
     const [logEntries, setLogEntries] = useState<ProcessLogEntry[]>([]);
@@ -22,29 +22,29 @@ export function App() {
     const onWsMessage = useCallback((msg: WsMessage) => {
         switch (msg.type) {
             case 'process:update':
-                updateFromWs(msg.payload.processes ?? []);
+                updateFromWs(msg.payload.processes);
                 break;
             case 'process:log':
-                setLogEntries(prev => [...prev.slice(-999), msg.payload as ProcessLogEntry]);
+                setLogEntries(prev => [...prev.slice(-999), msg.payload]);
                 break;
             case 'system:stats':
-                setSystemStats(msg.payload as SystemStats);
+                setSystemStats(msg.payload);
                 break;
         }
     }, [updateFromWs]);
 
     useWebSocket(onWsMessage);
 
-    const navClass = (p: Page) => `nav-item ${page === p ? 'active' : ''}`;
+    const navClass = (p: AppPage) => `${styles.navItem} ${page === p ? styles.active : ''}`;
 
     return (
-        <div class="app">
-            <aside class="sidebar">
-                <div class="logo">
-                    <span class="logo-icon">⚡</span>
-                    <span class="logo-text">TSPM</span>
+        <div class={styles.app}>
+            <aside class={styles.sidebar}>
+                <div class={styles.logo}>
+                    <span class={styles.logoIcon}>⚡</span>
+                    <span class={styles.logoText}>TSPM</span>
                 </div>
-                <nav>
+                <nav class={styles.nav}>
                     <button class={navClass('processes')} onClick={() => setPage('processes')}>
                         <span>📋</span> Processes
                     </button>
@@ -61,10 +61,10 @@ export function App() {
                 <StatsBar stats={systemStats} />
             </aside>
 
-            <main class="main">
-                <header class="topbar">
+            <main class={styles.main}>
+                <header class={styles.topbar}>
                     <h1>{page === 'processes' ? 'Processes' : page === 'logs' ? 'Logs' : page === 'terminal' ? 'Terminal' : 'Ports'}</h1>
-                    <div class="topbar-actions">
+                    <div class={styles.topbarActions}>
                         {page === 'processes' && (
                             <button class="btn btn-primary" onClick={() => setShowForm(true)}>
                                 + New Process
@@ -74,7 +74,7 @@ export function App() {
                     </div>
                 </header>
 
-                <div class="content">
+                <div class={styles.content}>
                     {page === 'processes' && (
                         <ProcessTable
                             processes={processes}
@@ -91,6 +91,7 @@ export function App() {
             </main>
 
             {showForm && <ProcessForm onClose={() => { setShowForm(false); refresh(); }} />}
+            <Dialog />
         </div>
     );
 }

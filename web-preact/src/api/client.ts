@@ -1,15 +1,22 @@
-import type { ProcessStatus, ProcessLogEntry, ProcessConfig, SystemStats, PortInfo, ApiResponse } from '../types';
+import type { 
+    ProcessStatus, 
+    ProcessLogEntry, 
+    ProcessConfig, 
+    SystemStats, 
+    PortInfo, 
+    ApiResponse 
+} from '../types';
 
 const BASE = '/api/v1';
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+async function request<T>(path: string, options?: RequestInit): Promise<ApiResponse<T>> {
     const res = await fetch(`${BASE}${path}`, {
         headers: { 'Content-Type': 'application/json' },
         ...options,
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-    return json as T;
+    return json as ApiResponse<T>;
 }
 
 export const api = {
@@ -54,7 +61,7 @@ export const api = {
     },
 
     // ─── System ─────────────────────────────────────────
-    status(): Promise<ApiResponse<{ processes: ProcessStatus[]; stats: any }>> {
+    status(): Promise<ApiResponse<{ processes: ProcessStatus[]; stats: SystemStats }>> {
         return request('/status');
     },
     stats(): Promise<ApiResponse<SystemStats>> {
