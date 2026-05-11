@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'preact/hooks';
-import styles from './Dialog.module.css';
+import styles from '@/styles/Dialog.module.css';
 import type { DialogState } from '../types';
 
-let dialogSetter: (state: DialogState) => void = () => {};
+let dialogSetter: (state: DialogState) => void = () => { };
 
 export const dialog = {
     alert: (title: string, message: string, confirmText = 'OK') => {
@@ -75,8 +75,8 @@ export function Dialog() {
                             {state.cancelText || 'Cancel'}
                         </button>
                     )}
-                    <button 
-                        class={`btn ${state.type === 'confirm' ? 'btn-danger' : 'btn-primary'}`} 
+                    <button
+                        class={`btn ${state.type === 'confirm' ? 'btn-danger' : 'btn-primary'}`}
                         onClick={() => handleAction(true)}
                     >
                         {state.confirmText || (state.type === 'confirm' ? 'Confirm' : 'OK')}

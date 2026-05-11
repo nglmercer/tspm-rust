@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { api } from '../api/client';
-import styles from './Terminal.module.css';
+import styles from '@/styles/Terminal.module.css';
 
 export function Terminal() {
     const [history, setHistory] = useState<string[]>(['TSPM Terminal — type commands below']);

@@ -1,5 +1,5 @@
 import type { SystemStats } from '../types';
-import styles from './StatsBar.module.css';
+import styles from '@/styles/StatsBar.module.css';
 
 export function StatsBar({ stats }: { stats: SystemStats }) {
     return (

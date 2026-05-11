@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import type { ProcessLogEntry, ProcessStatus } from '../types';
-import styles from './LogsViewer.module.css';
+import styles from '@/styles/LogsViewer.module.css';
 
 interface Props {
     entries: ProcessLogEntry[];

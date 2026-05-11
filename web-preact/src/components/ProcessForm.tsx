@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'preact/hooks';
 import { api } from '../api/client';
 import type { ProcessConfig } from '../types';
-import styles from './ProcessForm.module.css';
+import styles from '@/styles/ProcessForm.module.css';
 
 interface Props {
     onClose: () => void;

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'preact/hooks';
 import { useProcesses } from './hooks/useProcesses';
+import { useSystemStats } from './hooks/useSystemStats';
 import { useWebSocket } from './hooks/useWebSocket';
 import { ProcessTable } from './components/ProcessTable';
 import { LogsViewer } from './components/LogsViewer';
@@ -8,30 +9,30 @@ import { ProcessForm } from './components/ProcessForm';
 import { PortsView } from './components/PortsView';
 import { StatsBar } from './components/StatsBar';
 import { Dialog } from './components/Dialog';
-import type { WsMessage, ProcessLogEntry, SystemStats, AppPage } from './types';
+import type { WsMessage, ProcessLogEntry, AppPage } from './types';
 import styles from './App.module.css';
 
 export function App() {
     const [page, setPage] = useState<AppPage>('processes');
     const [showForm, setShowForm] = useState(false);
-    const [systemStats, setSystemStats] = useState<SystemStats>({ cpu: 0, memory: 0, uptime: 0, processCount: 0 });
     const [logEntries, setLogEntries] = useState<ProcessLogEntry[]>([]);
 
-    const { processes, updateFromWs, startProcess, stopProcess, restartProcess, deleteProcess, fetch: refresh } = useProcesses();
+    const { processes, updateFromWs: updateProcs, startProcess, stopProcess, restartProcess, deleteProcess, fetch: refresh } = useProcesses();
+    const { stats: systemStats, updateFromWs: updateStats } = useSystemStats();
 
     const onWsMessage = useCallback((msg: WsMessage) => {
         switch (msg.type) {
             case 'process:update':
-                updateFromWs(msg.payload.processes);
+                updateProcs(msg.payload.processes);
                 break;
             case 'process:log':
                 setLogEntries(prev => [...prev.slice(-999), msg.payload]);
                 break;
             case 'system:stats':
-                setSystemStats(msg.payload);
+                updateStats(msg.payload);
                 break;
         }
-    }, [updateFromWs]);
+    }, [updateProcs, updateStats]);
 
     useWebSocket(onWsMessage);
 

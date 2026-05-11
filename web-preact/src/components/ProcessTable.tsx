@@ -1,5 +1,5 @@
 import type { ProcessStatus } from '../types';
-import styles from './ProcessTable.module.css';
+import styles from '@/styles/ProcessTable.module.css';
 
 interface Props {
     processes: ProcessStatus[];
