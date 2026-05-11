@@ -6,12 +6,11 @@ use axum::{
 };
 use std::sync::Arc;
 use std::convert::Infallible;
-use tokio::io::AsyncReadExt;
+use tokio::io::AsyncBufReadExt;
 use crate::AppState;
 use super::utils::*;
 use super::processes::LogsQuery;
 use serde::Deserialize;
-use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 
 #[derive(Deserialize)]
 pub struct ExecuteBody {
@@ -97,34 +96,29 @@ pub async fn execute_command(
 ) -> Result<Response, (StatusCode, Json<ErrorResponse>)> {
     let cwd = body.cwd.clone().unwrap_or_else(|| ".".into());
     let cmd = body.command.clone();
+    let stream_mode = body.stream.unwrap_or(true);
 
-    // Use portable-pty for better terminal support
-    let pty_system = native_pty_system();
-    let pair = pty_system.openpty(PtySize {
-        rows: 24,
-        cols: 80,
-        pixel_width: 0,
-        pixel_height: 0,
-    }).map_err(|e| server_err(e.to_string()))?;
-
-    let mut cmd_builder = CommandBuilder::new("sh");
-    cmd_builder.arg("-c");
-    cmd_builder.arg(&cmd);
-    cmd_builder.cwd(&cwd);
-    cmd_builder.env("TERM", "xterm-256color");
-    cmd_builder.env("CLICOLOR_FORCE", "1");
-    cmd_builder.env("FORCE_COLOR", "1");
-
-    let mut _child = pair.slave.spawn_command(cmd_builder).map_err(|e| server_err(e.to_string()))?;
-    
-    // pair.slave is dropped here, which is important for the PTY to close correctly
-    drop(pair.slave);
-
-    let reader = pair.master.try_clone_reader().map_err(|e| server_err(e.to_string()))?;
-    let mut reader = std::io::BufReader::new(reader);
+    if !stream_mode {
+        let output = tokio::process::Command::new("sh").arg("-c").arg(&cmd)
+            .current_dir(&cwd)
+            .env("TERM", "xterm-256color")
+            .env("CLICOLOR_FORCE", "1")
+            .env("FORCE_COLOR", "1")
+            .output().await
+            .map_err(|e| server_err(e.to_string()))?;
+        return Ok(axum::response::Response::builder()
+            .header("Content-Type", "application/json")
+            .body(axum::body::Body::from(serde_json::json!({
+                "success": true,
+                "output": String::from_utf8_lossy(&output.stdout),
+                "error": String::from_utf8_lossy(&output.stderr),
+                "exitCode": output.status.code().unwrap_or(-1),
+                "cwd": cwd,
+            }).to_string()))
+            .unwrap());
+    }
 
     let stream = async_stream::stream! {
-        // Special case for cd to keep state in UI
         if cmd.starts_with("cd ") || cmd == "cd" {
             let target = if cmd == "cd" {
                 std::env::var("HOME").unwrap_or_else(|_| "/".into())
@@ -142,24 +136,47 @@ pub async fn execute_command(
             return;
         }
 
-        // Reading from PTY is blocking, so we use spawn_blocking or a separate thread
-        let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(100);
-        
-        std::thread::spawn(move || {
-            let mut buffer = [0u8; 1024];
-            while let Ok(n) = std::io::Read::read(&mut reader, &mut buffer) {
-                if n == 0 { break; }
-                if tx.blocking_send(buffer[..n].to_vec()).is_err() { break; }
+        let mut child = match tokio::process::Command::new("sh")
+            .arg("-c").arg(&cmd)
+            .current_dir(&cwd)
+            .env("TERM", "xterm-256color")
+            .env("CLICOLOR_FORCE", "1")
+            .env("FORCE_COLOR", "1")
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+        {
+            Ok(c) => c,
+            Err(e) => {
+                yield Ok(Event::default().event("complete").data(format!(r#"{{"success":false,"exitCode":null,"error":"{}"}}"#, e)));
+                return;
             }
-        });
+        };
 
-        while let Some(chunk) = rx.recv().await {
-            let data = String::from_utf8_lossy(&chunk).to_string();
-            let json = serde_json::json!({"type":"stdout","data": data});
-            yield Ok(Event::default().event("output").data(json.to_string()));
+        if let Some(stdout) = child.stdout.take() {
+            let mut reader = tokio::io::BufReader::new(stdout).lines();
+            while let Ok(Some(line)) = reader.next_line().await {
+                let data = serde_json::json!({"type":"stdout","data": format!("{}\r\n", line)});
+                yield Ok(Event::default().event("output").data(data.to_string()));
+            }
         }
 
-        yield Ok(Event::default().event("complete").data(r#"{"success":true,"exitCode":0,"error":""}"#));
+        if let Some(stderr) = child.stderr.take() {
+            let mut reader = tokio::io::BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = reader.next_line().await {
+                let data = serde_json::json!({"type":"stderr","data": format!("\x1b[31m{}\x1b[0m\r\n", line)});
+                yield Ok(Event::default().event("output").data(data.to_string()));
+            }
+        }
+
+        let status = child.wait().await;
+        let exit_code = status.as_ref().ok().and_then(|s| s.code());
+        let success = status.map(|s| s.success()).unwrap_or(false);
+        yield Ok(Event::default().event("complete").data(format!(
+            r#"{{"success":{},"exitCode":{},"error":""}}"#,
+            success,
+            exit_code.map_or("null".into(), |c| c.to_string())
+        )));
     };
 
     Ok(Sse::new(stream).keep_alive(KeepAlive::default()).into_response())

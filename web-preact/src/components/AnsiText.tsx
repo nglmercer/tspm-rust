@@ -1,8 +1,8 @@
-import { JSX } from 'preact';
+import { JSX, type AllCSSProperties } from 'preact';
 
 interface Props {
     text: string;
-    style?: JSX.CSSProperties;
+    style?: AllCSSProperties;
     highlight?: boolean;
 }
 
@@ -49,8 +49,8 @@ function renderHighlighted(text: string): (JSX.Element | string)[] {
                     nextParts.push(part.substring(lastIndex, match.index));
                 }
                 nextParts.push(
-                    <span style={{ 
-                        color: rule.color, 
+                    <span style={{
+                        color: rule.color,
                         fontWeight: rule.weight || 'inherit',
                         textDecoration: rule.decoration || 'none'
                     }}>
@@ -106,7 +106,7 @@ export function AnsiText({ text, style, highlight = true }: Props) {
 
                 if (!part) return null;
 
-                const spanStyle: JSX.CSSProperties = {
+                const spanStyle: AllCSSProperties = {
                     color: currentColor || 'inherit',
                     fontWeight: isBold ? 'bold' : 'inherit',
                 };
