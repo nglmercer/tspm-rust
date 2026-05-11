@@ -50,7 +50,7 @@ export function App() {
     const handleEdit = async (name: string) => {
         try {
             const res = await api.dump.get();
-            const processConfig = res.data?.processes.find(p => p.name === name);
+            const processConfig = res.data?.processes.find(p => p.name === name || p.name.split('/').pop() === name);
             if (processConfig) {
                 setEditingConfig(processConfig);
                 setShowForm(true);

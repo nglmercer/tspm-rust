@@ -20,7 +20,7 @@ export function LogsViewer({ entries, processes, onClear }: Props) {
 
     const filtered = filter === 'all'
         ? entries
-        : entries.filter(e => e.processName === filter);
+        : entries.filter(e => e.processName === filter || e.processName?.split('/').pop() === filter);
 
     return (
         <div class={styles.container}>
