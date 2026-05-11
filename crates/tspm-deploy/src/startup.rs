@@ -28,7 +28,7 @@ After=network.target
 Type=simple
 User={user}
 Environment=HOME={home}
-ExecStart={exe} resurrect
+ExecStart={exe} daemon
 ExecStop={exe} stop --all
 Restart=on-failure
 RestartSec=5

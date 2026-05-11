@@ -5,12 +5,14 @@ TSPM is a high-performance, lightweight process manager written in Rust. Inspire
 ## ✨ Features
 
 - **🚀 Performance**: Built with Rust for maximum speed and minimal resource usage.
+- **🖥️ Dashboard**: Beautiful, real-time web dashboard embedded directly into the binary.
 - **🔄 Auto-Restart**: Automatically restarts processes if they crash.
-- **📊 Monitoring**: Real-time monitoring of process health, memory, and CPU usage.
+- **📊 Monitoring**: Real-time system metrics (CPU, Memory, Uptime) and per-process tracking.
+- **🐚 Terminal**: Integrated **xterm.js** terminal for real-time command execution and log viewing.
 - **🌐 Clustering**: Support for multiple instances and load balancing (round-robin).
 - **💓 Health Checks**: Built-in HTTP health checks to ensure your services are running correctly.
 - **🚢 Deployment**: Streamlined deployment workflows over SSH.
-- **🛠️ Extensible**: Plugin system support (including Minecraft plugin integration).
+- **🛡️ Startup**: Native Systemd support to auto-run your processes on boot.
 
 ## 📁 Project Structure
 
@@ -18,22 +20,17 @@ This project is organized as a Rust workspace:
 
 - `crates/tspm-core`: Core logic and shared utilities.
 - `crates/tspm-engine`: The orchestration engine for managing processes.
-- `crates/tspm-server`: The central management server.
+- `crates/tspm-server`: The central management server with embedded web dashboard.
 - `crates/tspm-cli`: Command-line interface for interacting with TSPM.
 - `crates/tspm-monitor`: Monitoring and metrics collection.
 - `crates/tspm-events`: Event system for inter-process communication.
-- `web-preact`: A modern web dashboard built with Preact.
+- `web-preact`: A modern web dashboard built with Preact and Vite.
 
 ## 🚀 Getting Started
 
-### Prerequisites
-
-- [Rust](https://rustup.rs/) (latest stable)
-- [Bun](https://bun.sh/) (optional, for running scripts)
-
 ### Installation
 
-Clone the repository and build the project:
+Clone the repository and build the standalone binary:
 
 ```bash
 git clone https://github.com/tspm/tspm-rust.git
@@ -41,36 +38,37 @@ cd tspm-rust
 cargo build --release
 ```
 
-### Configuration
-
-Create a `tspm.toml` file in your project root. Here is an example:
-
-```toml
-[defaults]
-autorestart = true
-max_restarts = 10
-
-[[processes]]
-name = "api-server"
-script = "bun"
-args = ["run", "src/index.ts"]
-instances = 2
-lb_strategy = "round-robin"
-```
+The binary will be available at `target/release/tspm`.
 
 ### Usage
 
-Start the TSPM server:
+Start the TSPM dashboard:
 
 ```bash
-tspm start
+./target/release/tspm dashboard
 ```
 
 List all processes:
 
 ```bash
-tspm list
+./target/release/tspm list
 ```
+
+### Auto-run on Startup (Linux)
+
+1. Save your current process list:
+   ```bash
+   ./target/release/tspm save
+   ```
+2. Install the Systemd service:
+   ```bash
+   sudo ./target/release/tspm startup systemd
+   ```
+3. Enable and start:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now tspm
+   ```
 
 ## 📄 License
 

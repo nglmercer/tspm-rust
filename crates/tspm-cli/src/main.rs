@@ -84,8 +84,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mgr = manager.lock().await;
             commands::handle_save(&mgr).await?;
         }
-        cli::Commands::Resurrect => {
-            commands::handle_resurrect().await?;
+        cli::Commands::Resurrect { dashboard, port } => {
+            commands::handle_resurrect(dashboard, port).await?;
+        }
+        cli::Commands::Daemon { port } => {
+            commands::handle_resurrect(true, port).await?;
         }
         cli::Commands::Startup { platform, user } => {
             commands::handle_startup(&platform, user.as_deref()).await?;

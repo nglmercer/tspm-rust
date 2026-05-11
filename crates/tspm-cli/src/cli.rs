@@ -166,7 +166,22 @@ pub enum Commands {
     Save,
 
     /// Restore processes from dump file
-    Resurrect,
+    Resurrect {
+        /// Start the dashboard as well
+        #[arg(short = 'd', long)]
+        dashboard: bool,
+
+        /// Dashboard port
+        #[arg(short = 'p', long, default_value = "3000")]
+        port: u16,
+    },
+
+    /// Run as a daemon (resurrect + dashboard)
+    Daemon {
+        /// Dashboard port
+        #[arg(short = 'p', long, default_value = "3000")]
+        port: u16,
+    },
 
     /// Generate system startup script
     Startup {

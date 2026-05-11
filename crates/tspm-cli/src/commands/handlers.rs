@@ -291,7 +291,10 @@ pub async fn handle_save(manager: &ProcessManager) -> Result<(), Box<dyn std::er
     Ok(())
 }
 
-pub async fn handle_resurrect() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn handle_resurrect(
+    dashboard: bool,
+    port: u16,
+) -> Result<(), Box<dyn std::error::Error>> {
     let persistence = tspm_deploy::PersistenceManager::new();
     if let Some(data) = persistence.load() {
         let cfg = tspm_core::TspmConfig {
@@ -312,8 +315,26 @@ pub async fn handle_resurrect() -> Result<(), Box<dyn std::error::Error>> {
 
         println!("[TSPM] {} processes resurrected", cfg.processes.len());
 
+        let manager_arc = Arc::new(Mutex::new(manager));
+        let dashboard_handle = if dashboard {
+            println!("[TSPM] Dashboard starting on http://localhost:{}", port);
+            let m = manager_arc.clone();
+            Some(tokio::spawn(async move {
+                let _ = tspm_server::start_dashboard(m, port, "0.0.0.0").await;
+            }))
+        } else {
+            None
+        };
+
         tspm_engine::SignalHandler::wait_for_shutdown().await;
-        manager.stop_all().await?;
+        
+        if let Some(handle) = dashboard_handle {
+            handle.abort();
+        }
+
+        if let Ok(mgr) = Arc::try_unwrap(manager_arc) {
+            mgr.into_inner().stop_all().await?;
+        }
     } else {
         println!("[TSPM] No saved state found");
     }
