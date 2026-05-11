@@ -2541,6 +2541,7 @@ dependencies = [
  "nix",
  "notify 7.0.0",
  "notify-debouncer-mini",
+ "procfs",
  "serde",
  "serde_json",
  "time",

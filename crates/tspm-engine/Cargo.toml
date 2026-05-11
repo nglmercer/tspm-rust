@@ -16,3 +16,4 @@ tracing.workspace = true
 libc.workspace = true
 tspm-core.workspace = true
 tspm-events.workspace = true
+procfs = "0.17"

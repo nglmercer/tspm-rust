@@ -1,9 +1,10 @@
 use std::collections::HashMap;
-use tokio::process::{Child, Command};
-use tokio::time::{sleep, Duration};
-use tokio::sync::Mutex as AsyncMutex;
 use std::sync::Arc;
+use tokio::process::{Child, Command};
+use tokio::sync::Mutex as AsyncMutex;
+use tokio::time::{sleep, Duration};
 use tracing::{debug, error, info, warn};
+use procfs::WithCurrentSystemInfo;
 use tspm_core::{
     ProcessConfig, ProcessState, ProcessStatus, RestartReason, get_default_log_path,
 };
@@ -301,6 +302,17 @@ impl ManagedProcess {
     pub fn get_status(&self) -> ProcessStatus {
         let uptime_ms = self.started_at.map(|t| t.elapsed().as_millis() as u64);
 
+        let mut memory_usage = None;
+        let cpu_usage = None;
+
+        if let Some(pid) = self.pid {
+            if let Ok(process) = procfs::process::Process::new(pid as i32) {
+                if let Ok(stat) = process.stat() {
+                    memory_usage = Some(stat.rss_bytes().get());
+                }
+            }
+        }
+
         ProcessStatus {
             name: self.display_name(),
             pid: self.pid,
@@ -313,6 +325,8 @@ impl ManagedProcess {
             cluster_group: self.config.cluster_group.clone(),
             healthy: Some(self.current_state == ProcessState::Running),
             namespace: self.config.namespace.clone(),
+            memory_usage,
+            cpu_usage,
         }
     }
 
