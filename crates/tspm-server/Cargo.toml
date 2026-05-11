@@ -19,6 +19,8 @@ tspm-engine.workspace = true
 tspm-monitor.workspace = true
 tspm-deploy.workspace = true
 libc.workspace = true
+rust-embed = "8.11.0"
+mime_guess = "2.0.5"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
