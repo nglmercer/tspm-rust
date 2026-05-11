@@ -500,3 +500,14 @@ pub async fn handle_build(
     println!("[TSPM] No build script for '{name}'");
     Ok(())
 }
+
+pub async fn handle_port() -> Result<(), Box<dyn std::error::Error>> {
+    let port_file = tspm_core::get_tspm_home().join("port");
+    if port_file.exists() {
+        let port = std::fs::read_to_string(port_file)?;
+        println!("{port}");
+    } else {
+        println!("No active dashboard found");
+    }
+    Ok(())
+}

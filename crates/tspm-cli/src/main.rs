@@ -125,6 +125,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut mgr = manager.lock().await;
             commands::handle_build(&name, &config, &mut mgr).await?;
         }
+        cli::Commands::Port => {
+            commands::handle_port().await?;
+        }
     }
 
     Ok(())

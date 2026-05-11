@@ -31,6 +31,13 @@ pub async fn start_dashboard(
     let addr = format!("{host}:{port}");
     tracing::info!("[TSPM] Dashboard (Embedded): http://{addr}");
 
+    // Save port to file for CLI discovery
+    let port_file = tspm_core::get_tspm_home().join("port");
+    if let Some(parent) = port_file.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::write(&port_file, port.to_string());
+
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .map_err(|e| format!("Failed to bind {addr}: {e}"))?;

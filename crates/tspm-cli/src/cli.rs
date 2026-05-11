@@ -282,4 +282,7 @@ pub enum Commands {
         #[arg(short = 'c', long, default_value = "tspm.toml")]
         config: PathBuf,
     },
+
+    /// Get the active dashboard port
+    Port,
 }
