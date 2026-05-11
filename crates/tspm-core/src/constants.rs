@@ -151,6 +151,26 @@ pub fn calculate_restart_delay(restart_count: u32) -> u64 {
 
 /// Get the TSPM home directory
 pub fn get_tspm_home() -> PathBuf {
+    // If TSPM_HOME is set, use it
+    if let Ok(path) = std::env::var("TSPM_HOME") {
+        return PathBuf::from(path);
+    }
+
+    // If running under sudo, try to get the original user's home
+    if let Ok(user) = std::env::var("SUDO_USER") {
+        if let Ok(home) = std::env::var("HOME") {
+            // If HOME is /root but SUDO_USER is set, we might want to look in /home/user
+            // However, usually sudo -E preserves HOME. 
+            // A safer bet for Linux is to check /home/{user} if HOME is /root
+            if home == "/root" {
+                let user_home = PathBuf::from("/home").join(user).join(".tspm");
+                if user_home.exists() {
+                    return user_home;
+                }
+            }
+        }
+    }
+
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join(".tspm")
