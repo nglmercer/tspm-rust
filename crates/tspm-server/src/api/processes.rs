@@ -112,7 +112,7 @@ pub async fn get_process_logs(
                 let lines: Vec<&str> = content.lines().collect();
                 let start = lines.len().saturating_sub(limit);
                 for line in &lines[start..] {
-                    logs.push(serde_json::json!({"timestamp":"","message":strip_ansi(line),"type":"stdout","processName":name}));
+                    logs.push(serde_json::json!({"timestamp":"","message":line,"type":"stdout","processName":name}));
                 }
             }
         }

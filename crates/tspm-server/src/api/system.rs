@@ -80,7 +80,7 @@ pub async fn get_all_logs(
                         let lines: Vec<&str> = content.lines().collect();
                         let start = lines.len().saturating_sub(limit);
                         for line in &lines[start..] {
-                            all.push(serde_json::json!({"timestamp":"","type":"stdout","message":strip_ansi(line),"processName":s.name}));
+                            all.push(serde_json::json!({"timestamp":"","type":"stdout","message":line,"processName":s.name}));
                         }
                     }
                 }
@@ -150,7 +150,7 @@ pub async fn execute_command(
         if let Some(stdout) = child.stdout.take() {
             let mut reader = tokio::io::BufReader::new(stdout).lines();
             while let Ok(Some(line)) = reader.next_line().await {
-                let data = serde_json::json!({"type":"stdout","data": strip_ansi(&line)});
+                let data = serde_json::json!({"type":"stdout","data": &line});
                 yield Ok(Event::default().event("output").data(serde_json::to_string(&data).unwrap_or_default()));
             }
         }
@@ -158,7 +158,7 @@ pub async fn execute_command(
         if let Some(stderr) = child.stderr.take() {
             let mut reader = tokio::io::BufReader::new(stderr).lines();
             while let Ok(Some(line)) = reader.next_line().await {
-                let data = serde_json::json!({"type":"stderr","data": strip_ansi(&line)});
+                let data = serde_json::json!({"type":"stderr","data": &line});
                 yield Ok(Event::default().event("output").data(serde_json::to_string(&data).unwrap_or_default()));
             }
         }

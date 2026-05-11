@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import type { ProcessLogEntry, ProcessStatus } from '../types';
+import { AnsiText } from './AnsiText';
 import styles from '@/styles/LogsViewer.module.css';
 
 interface Props {
@@ -48,7 +49,9 @@ export function LogsViewer({ entries, processes, onClear }: Props) {
                     <div class={styles.line} key={i}>
                         <span class={styles.time}>{e.timestamp || '--:--:--'}</span>
                         <span class={styles.proc} title={e.processName}>{e.processName?.split('/').pop() || '?'}</span>
-                        <span class={`${styles.msg} ${e.type === 'stderr' ? styles.stderr : ''}`}>{e.message}</span>
+                        <span class={`${styles.msg} ${e.type === 'stderr' ? styles.stderr : ''}`}>
+                            <AnsiText text={e.message} />
+                        </span>
                     </div>
                 ))}
                 <div ref={bottomRef} />

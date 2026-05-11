@@ -58,7 +58,7 @@ async fn handle_ws(mut socket: WebSocket, state: Arc<AppState>) {
                                         let log_msg = serde_json::json!({
                                             "type": "process:log",
                                             "payload": {
-                                                "message": strip_ansi(line),
+                                                "message": line,
                                                 "type": log_type,
                                                 "processName": s.name,
                                             }

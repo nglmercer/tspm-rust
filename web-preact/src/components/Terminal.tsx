@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { api } from '../api/client';
+import { AnsiText } from './AnsiText';
 import styles from '@/styles/Terminal.module.css';
 
 export function Terminal() {
@@ -57,7 +58,7 @@ export function Terminal() {
             <div class={styles.output} ref={outputRef}>
                 {history.map((line, i) => (
                     <div key={i} style={{ color: line.startsWith('[stderr]') ? 'var(--danger)' : line.startsWith(cwd) ? 'var(--text3)' : 'inherit' }}>
-                        {line}
+                        <AnsiText text={line} />
                     </div>
                 ))}
             </div>
