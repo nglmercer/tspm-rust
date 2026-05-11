@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if daemon {
                 tracing::warn!("Daemon mode not fully implemented yet");
             }
-            commands::handle_start(&config, name.as_deref(), watch, &env).await?;
+            commands::handle_start(config.as_deref(), name.as_deref(), watch, &env).await?;
         }
         cli::Commands::Stop { name, all } => {
             let mut mgr = manager.lock().await;
@@ -31,11 +31,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         cli::Commands::Restart { config, name, all } => {
             let mut mgr = manager.lock().await;
-            commands::handle_restart(&config, name.as_deref(), all, &mut mgr).await?;
+            commands::handle_restart(config.as_deref(), name.as_deref(), all, &mut mgr).await?;
         }
         cli::Commands::Reload { config, name, all } => {
             let mut mgr = manager.lock().await;
-            commands::handle_reload(&config, name.as_deref(), all, &mut mgr).await?;
+            commands::handle_reload(config.as_deref(), name.as_deref(), all, &mut mgr).await?;
         }
         cli::Commands::Delete { name, all } => {
             let mut mgr = manager.lock().await;
@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::handle_groups(&mgr).await?;
         }
         cli::Commands::Dev { config, port } => {
-            commands::handle_dev(&config, port).await?;
+            commands::handle_dev(config.as_deref(), port).await?;
         }
         cli::Commands::Flush => {
             let mut mgr = manager.lock().await;
@@ -119,11 +119,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         cli::Commands::Install { name, config } => {
             let mut mgr = manager.lock().await;
-            commands::handle_install(&name, &config, &mut mgr).await?;
+            commands::handle_install(&name, config.as_deref(), &mut mgr).await?;
         }
         cli::Commands::Build { name, config } => {
             let mut mgr = manager.lock().await;
-            commands::handle_build(&name, &config, &mut mgr).await?;
+            commands::handle_build(&name, config.as_deref(), &mut mgr).await?;
         }
         cli::Commands::Port => {
             commands::handle_port().await?;

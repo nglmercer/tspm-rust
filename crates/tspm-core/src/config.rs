@@ -29,7 +29,7 @@ pub fn load_config(path: &Path) -> TspmResult<TspmConfig> {
 
 /// Discover a config file in the current directory
 pub fn discover_config_file() -> Option<PathBuf> {
-    let candidates = ["tspm.toml"];
+    let candidates = ["tspm.toml", "package.json"];
 
     for name in &candidates {
         let path = PathBuf::from(name);
@@ -43,14 +43,90 @@ pub fn discover_config_file() -> Option<PathBuf> {
 /// Load config with auto-discovery
 pub fn load_config_with_discovery(path: Option<&Path>) -> TspmResult<TspmConfig> {
     match path {
-        Some(p) => load_config(p),
+        Some(p) => {
+            if p.file_name().and_then(|f| f.to_str()) == Some("package.json") {
+                load_config_from_package_json(p)
+            } else {
+                load_config(p)
+            }
+        },
         None => {
             let discovered = discover_config_file().ok_or(TspmError::ConfigNotFound {
-                path: "tspm.toml".to_string(),
+                path: "tspm.toml or package.json".to_string(),
             })?;
-            load_config(&discovered)
+            if discovered.file_name().and_then(|f| f.to_str()) == Some("package.json") {
+                load_config_from_package_json(&discovered)
+            } else {
+                load_config(&discovered)
+            }
         }
     }
+}
+
+/// Load TSPM configuration from a package.json file
+pub fn load_config_from_package_json(path: &Path) -> TspmResult<TspmConfig> {
+    let content = fs::read_to_string(path).map_err(|e| TspmError::ConfigRead {
+        path: path.display().to_string(),
+        source: e,
+    })?;
+
+    let pkg: serde_json::Value = serde_json::from_str(&content).map_err(|e| TspmError::Other(format!("Failed to parse package.json: {}", e)))?;
+
+    tracing::info!("[TSPM] Auto-detected package.json. Using it for configuration.");
+
+    let name = pkg["name"].as_str().unwrap_or("app").to_string();
+    
+    // Detect how to run it
+    let mut script = String::new();
+    let mut interpreter = None;
+
+    if let Some(s) = pkg["scripts"]["start"].as_str() {
+        // If it's a simple command, we might want to run it via bun or npm
+        // But for now let's just use it as the script
+        script = s.to_string();
+        
+        // Try to detect if we should use bun or node if not specified in the script
+        if !script.contains("node") && !script.contains("bun") {
+            if std::process::Command::new("bun").arg("--version").output().is_ok() {
+                interpreter = Some("bun".to_string());
+                if !script.starts_with("run ") && !script.starts_with("start") {
+                    script = format!("run {}", script);
+                }
+            } else {
+                interpreter = Some("npm".to_string());
+                if !script.starts_with("run ") && !script.starts_with("start") {
+                    script = format!("run {}", script);
+                }
+            }
+        }
+    } else if let Some(main) = pkg["main"].as_str() {
+        script = main.to_string();
+        if std::process::Command::new("bun").arg("--version").output().is_ok() {
+            interpreter = Some("bun".to_string());
+        } else {
+            interpreter = Some("node".to_string());
+        }
+    }
+
+    if script.is_empty() {
+        return Err(TspmError::ConfigValidation {
+            message: "No start script or main file found in package.json".to_string(),
+        });
+    }
+
+    let proc = ProcessConfig {
+        name: name.clone(),
+        script,
+        interpreter,
+        ..ProcessConfig::default()
+    };
+
+    let config = TspmConfig {
+        processes: vec![proc],
+        ..TspmConfig::default()
+    };
+
+    Ok(normalize_config(config))
 }
 
 /// Validate a TSPM configuration

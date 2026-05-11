@@ -229,7 +229,7 @@ pub struct DockerConfig {
 }
 
 /// Per-process configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ProcessConfig {
     pub name: String,
     pub script: String,
@@ -392,7 +392,7 @@ pub struct DeploymentConfig {
 }
 
 /// Top-level TSPM configuration (TOML)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TspmConfig {
     pub processes: Vec<ProcessConfig>,
 

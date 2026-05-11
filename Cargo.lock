@@ -2514,9 +2514,11 @@ dependencies = [
  "dirs",
  "libc",
  "serde",
+ "serde_json",
  "thiserror",
  "time",
  "toml",
+ "tracing",
 ]
 
 [[package]]

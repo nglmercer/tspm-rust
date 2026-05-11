@@ -389,6 +389,11 @@ impl ManagedProcess {
             env.insert(k.clone(), v.clone());
         }
 
+        // Augment PATH if not explicitly overridden by custom env
+        if !self.config.env.contains_key("PATH") {
+            env.insert("PATH".to_string(), tspm_core::get_augmented_path());
+        }
+
         // Add instance variable
         let instance_var = self.config.instance_var.as_deref().unwrap_or("NODE_APP_INSTANCE");
         env.insert(instance_var.to_string(), self.instance_id.to_string());
@@ -404,6 +409,7 @@ impl ManagedProcess {
         let result = Command::new("sh")
             .arg("-c")
             .arg(script)
+            .env("PATH", tspm_core::get_augmented_path())
             .current_dir(self.config.cwd.as_deref().unwrap_or(std::path::Path::new(".")))
             .output()
             .await;
@@ -425,6 +431,7 @@ impl ManagedProcess {
         let result = Command::new("sh")
             .arg("-c")
             .arg(script)
+            .env("PATH", tspm_core::get_augmented_path())
             .output()
             .await;
 

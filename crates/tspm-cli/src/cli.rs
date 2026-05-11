@@ -15,9 +15,9 @@ pub struct Cli {
 pub enum Commands {
     /// Start a process or ecosystem file
     Start {
-        /// Configuration file path (TOML)
-        #[arg(short = 'c', long, default_value = "tspm.toml")]
-        config: PathBuf,
+        /// Configuration file path (TOML or package.json)
+        #[arg(short = 'c', long)]
+        config: Option<PathBuf>,
 
         /// Start only the specified process by name
         #[arg(short = 'n', long)]
@@ -50,8 +50,8 @@ pub enum Commands {
     /// Restart a running process
     Restart {
         /// Configuration file path
-        #[arg(default_value = "tspm.toml")]
-        config: PathBuf,
+        #[arg(short = 'c', long)]
+        config: Option<PathBuf>,
 
         /// Restart only the specified process by name
         #[arg(short = 'n', long)]
@@ -65,8 +65,8 @@ pub enum Commands {
     /// Reload process(es) without downtime
     Reload {
         /// Configuration file path
-        #[arg(default_value = "tspm.toml")]
-        config: PathBuf,
+        #[arg(short = 'c', long)]
+        config: Option<PathBuf>,
 
         /// Reload only the specified process by name
         #[arg(short = 'n', long)]
@@ -140,8 +140,8 @@ pub enum Commands {
     /// Start processes in development mode with hot-reload
     Dev {
         /// Configuration file path
-        #[arg(default_value = "tspm.toml")]
-        config: PathBuf,
+        #[arg(short = 'c', long)]
+        config: Option<PathBuf>,
 
         /// API port
         #[arg(short = 'p', long, default_value = "3000")]
@@ -267,20 +267,18 @@ pub enum Commands {
     Install {
         /// Process name
         name: String,
-
         /// Configuration file path
-        #[arg(short = 'c', long, default_value = "tspm.toml")]
-        config: PathBuf,
+        #[arg(short = 'c', long)]
+        config: Option<PathBuf>,
     },
 
     /// Build a process
     Build {
         /// Process name
         name: String,
-
         /// Configuration file path
-        #[arg(short = 'c', long, default_value = "tspm.toml")]
-        config: PathBuf,
+        #[arg(short = 'c', long)]
+        config: Option<PathBuf>,
     },
 
     /// Get the active dashboard port

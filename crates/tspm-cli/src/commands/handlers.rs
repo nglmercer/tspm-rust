@@ -5,12 +5,12 @@ use tspm_core::config;
 use tspm_engine::ProcessManager;
 
 pub async fn handle_start(
-    config_path: &Path,
+    config_path: Option<&Path>,
     _process_name: Option<&str>,
     watch: bool,
     env_vars: &[String],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut cfg = config::load_config(config_path)
+    let mut cfg = config::load_config_with_discovery(config_path)
         .map_err(|e| format!("Config error: {e}"))?;
 
     for ev in env_vars {
@@ -27,7 +27,11 @@ pub async fn handle_start(
         }
     }
 
-    let config_dir = config_path.parent().unwrap_or(std::path::Path::new(".")).to_path_buf();
+    let config_dir = if let Some(p) = config_path {
+        p.parent().unwrap_or(std::path::Path::new(".")).to_path_buf()
+    } else {
+        std::path::Path::new(".").to_path_buf()
+    };
     let mut manager = ProcessManager::with_config_dir(config_dir);
     manager.load_from_config(&cfg).await?;
     manager.start_all().await?;
@@ -57,16 +61,20 @@ pub async fn handle_stop(
 }
 
 pub async fn handle_restart(
-    config_path: &Path,
+    config_path: Option<&Path>,
     process_name: Option<&str>,
     all: bool,
     manager: &mut ProcessManager,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if all {
         manager.stop_all().await?;
-        let cfg = config::load_config(config_path)?;
-        let config_dir = config_path.parent().unwrap_or(std::path::Path::new("."));
-        manager.set_config_dir(config_dir.to_path_buf());
+        let cfg = config::load_config_with_discovery(config_path)?;
+        let config_dir = if let Some(p) = config_path {
+            p.parent().unwrap_or(std::path::Path::new(".")).to_path_buf()
+        } else {
+            std::path::Path::new(".").to_path_buf()
+        };
+        manager.set_config_dir(config_dir);
         manager.load_from_config(&cfg).await?;
         manager.start_all().await?;
         println!("[TSPM] All processes restarted");
@@ -229,11 +237,15 @@ pub async fn handle_groups(manager: &ProcessManager) -> Result<(), Box<dyn std::
 }
 
 pub async fn handle_dev(
-    config_path: &Path,
+    config_path: Option<&Path>,
     port: u16,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let cfg = config::load_config(config_path)?;
-    let config_dir = config_path.parent().unwrap_or(std::path::Path::new(".")).to_path_buf();
+    let cfg = config::load_config_with_discovery(config_path)?;
+    let config_dir = if let Some(p) = config_path {
+        p.parent().unwrap_or(std::path::Path::new(".")).to_path_buf()
+    } else {
+        std::path::Path::new(".").to_path_buf()
+    };
     let mut manager = ProcessManager::with_config_dir(config_dir);
     manager.load_from_config(&cfg).await?;
     manager.start_all().await?;
@@ -447,10 +459,10 @@ pub async fn handle_dashboard(
 
 pub async fn handle_install(
     name: &str,
-    config_path: &Path,
+    config_path: Option<&Path>,
     _manager: &mut ProcessManager,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let cfg = config::load_config(config_path)?;
+    let cfg = config::load_config_with_discovery(config_path)?;
     for proc in &cfg.processes {
         if proc.name == name {
             if let Some(ref install_script) = proc.install {
@@ -475,10 +487,10 @@ pub async fn handle_install(
 
 pub async fn handle_build(
     name: &str,
-    config_path: &Path,
+    config_path: Option<&Path>,
     _manager: &mut ProcessManager,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let cfg = config::load_config(config_path)?;
+    let cfg = config::load_config_with_discovery(config_path)?;
     for proc in &cfg.processes {
         if proc.name == name {
             if let Some(ref build_script) = proc.build {
