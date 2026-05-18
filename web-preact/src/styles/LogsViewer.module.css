@@ -26,12 +26,31 @@
 
 .line {
   display: grid;
-  grid-template-columns: 80px 100px 1fr;
+  grid-template-columns: 80px 100px 1fr auto;
   gap: 8px;
   padding: 1px 0;
+  align-items: center;
+}
+
+.line.grouped {
+  background: var(--surface2);
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: 1px -4px;
 }
 
 .time { color: var(--text3); }
 .proc { color: var(--primary); font-weight: 600; }
 .msg { color: var(--text); white-space: pre-wrap; word-break: break-word; }
 .stderr { color: var(--danger); }
+
+.badge {
+  background: var(--warning);
+  color: var(--surface);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  white-space: nowrap;
+}

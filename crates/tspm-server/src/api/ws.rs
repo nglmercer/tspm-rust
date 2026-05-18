@@ -63,17 +63,24 @@ async fn handle_ws(mut socket: WebSocket, state: Arc<AppState>) {
                                                 let h = (total_secs % 86400) / 3600;
                                                 let m = (total_secs % 3600) / 60;
                                                 let s = total_secs % 60;
-                                                let ms = (d.subsec_millis() as u64) / 100;
-                                                format!("{:02}:{:02}:{:02}.{}", h, m, s, ms)
+                                                format!("{:02}:{:02}:{:02}", h, m, s)
                                             })
                                             .unwrap_or_default();
+                                        let short_name = if s.name.contains('/') {
+                                            std::path::Path::new(&s.name)
+                                                .file_name()
+                                                .map(|n| n.to_string_lossy().to_string())
+                                                .unwrap_or_else(|| s.name.clone())
+                                        } else {
+                                            s.name.clone()
+                                        };
                                         let log_msg = serde_json::json!({
                                             "type": "process:log",
                                             "payload": {
                                                 "timestamp": timestamp,
                                                 "message": line,
                                                 "type": log_type,
-                                                "processName": s.name,
+                                                "processName": short_name,
                                             }
                                         });
                                         if socket.send(Message::Text(log_msg.to_string().into())).await.is_err() { break; }
