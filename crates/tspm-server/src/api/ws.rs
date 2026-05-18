@@ -55,9 +55,22 @@ async fn handle_ws(mut socket: WebSocket, state: Arc<AppState>) {
 
                                     for line in new_content.lines() {
                                         if line.is_empty() { continue; }
+                                        let timestamp = std::time::SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .ok()
+                                            .map(|d| {
+                                                let total_secs = d.as_secs();
+                                                let h = (total_secs % 86400) / 3600;
+                                                let m = (total_secs % 3600) / 60;
+                                                let s = total_secs % 60;
+                                                let ms = (d.subsec_millis() as u64) / 100;
+                                                format!("{:02}:{:02}:{:02}.{}", h, m, s, ms)
+                                            })
+                                            .unwrap_or_default();
                                         let log_msg = serde_json::json!({
                                             "type": "process:log",
                                             "payload": {
+                                                "timestamp": timestamp,
                                                 "message": line,
                                                 "type": log_type,
                                                 "processName": s.name,

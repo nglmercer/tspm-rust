@@ -186,7 +186,7 @@ pub struct ApiConfig {
     pub host: Option<String>,
 }
 
-fn default_api_port() -> u16 { 3000 }
+fn default_api_port() -> u16 { 7890 }
 
 /// Kubernetes configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

@@ -8,6 +8,32 @@ use crate::AppState;
 use super::utils::*;
 use serde::Deserialize;
 
+#[cfg(unix)]
+fn validate_user_group(config: &tspm_core::ProcessConfig) -> Result<(), String> {
+    if let Some(ref group_name) = config.group {
+        let c_group = std::ffi::CString::new(group_name.as_str())
+            .map_err(|e| format!("Invalid group name '{}': {}", group_name, e))?;
+        let grp = unsafe { libc::getgrnam(c_group.as_ptr()) };
+        if grp.is_null() {
+            return Err(format!("Group '{}' not found", group_name));
+        }
+    }
+    if let Some(ref user_name) = config.user {
+        let c_user = std::ffi::CString::new(user_name.as_str())
+            .map_err(|e| format!("Invalid user name '{}': {}", user_name, e))?;
+        let pwd = unsafe { libc::getpwnam(c_user.as_ptr()) };
+        if pwd.is_null() {
+            return Err(format!("User '{}' not found", user_name));
+        }
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn validate_user_group(_config: &tspm_core::ProcessConfig) -> Result<(), String> {
+    Ok(())
+}
+
 #[derive(Deserialize)]
 pub struct LogsQuery {
     pub limit: Option<usize>,
@@ -44,6 +70,8 @@ pub async fn create_process(
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     if body.name.is_empty() { return Err(bad_req("Process name is required".into())); }
     if body.script.is_empty() { return Err(bad_req("Script is required".into())); }
+
+    validate_user_group(&body).map_err(|e| bad_req(e))?;
 
     let mut mgr = state.manager.lock().await;
     mgr.add_process(body.clone()).await.map_err(|e| server_err(e.to_string()))?;
@@ -102,6 +130,8 @@ pub async fn update_process(
     Path(name): Path<String>,
     Json(body): Json<tspm_core::ProcessConfig>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    validate_user_group(&body).map_err(|e| bad_req(e))?;
+
     let mut mgr = state.manager.lock().await;
     mgr.update_process(&name, body.clone()).await.map_err(|e| server_err(e.to_string()))?;
     mgr.start_process(&body.name).await.map_err(|e| server_err(e.to_string()))?;

@@ -185,14 +185,55 @@ impl ManagedProcess {
             cmd.stderr(std::process::Stdio::piped());
         }
 
-        // Put child in its own process group so we can kill the whole tree
+        // Put child in its own process group and optionally switch user/group
         #[cfg(unix)]
         {
             #[allow(unused_imports)]
             use std::os::unix::process::CommandExt;
+            let user = self.config.user.clone();
+            let group = self.config.group.clone();
             unsafe {
-                cmd.pre_exec(|| {
+                cmd.pre_exec(move || {
                     libc::setpgid(0, 0);
+
+                    if let Some(ref group_name) = group {
+                        let c_group = std::ffi::CString::new(group_name.as_str())
+                            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
+                        let grp = libc::getgrnam(c_group.as_ptr());
+                        if grp.is_null() {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidInput,
+                                format!("Group '{}' not found", group_name),
+                            ));
+                        }
+                        let gid = (*grp).gr_gid;
+                        if libc::setgid(gid) != 0 {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::PermissionDenied,
+                                format!("Failed to set gid for group '{}'", group_name),
+                            ));
+                        }
+                    }
+
+                    if let Some(ref user_name) = user {
+                        let c_user = std::ffi::CString::new(user_name.as_str())
+                            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
+                        let pwd = libc::getpwnam(c_user.as_ptr());
+                        if pwd.is_null() {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidInput,
+                                format!("User '{}' not found", user_name),
+                            ));
+                        }
+                        let uid = (*pwd).pw_uid;
+                        if libc::setuid(uid) != 0 {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::PermissionDenied,
+                                format!("Failed to set uid for user '{}'", user_name),
+                            ));
+                        }
+                    }
+
                     Ok(())
                 });
             }
@@ -212,8 +253,10 @@ impl ManagedProcess {
         // Run post-start script in background
         if let Some(ref script) = self.config.post_start {
             let script = script.clone();
+            let user = self.config.user.clone();
+            let group = self.config.group.clone();
             tokio::spawn(async move {
-                Self::run_script_static("post-start", &script).await;
+                Self::run_script_static("post-start", &script, &user, &group).await;
             });
         }
 
@@ -420,13 +463,64 @@ impl ManagedProcess {
         info!("{} Running {} script for '{}': {}",
             "[TSPM]", label, self.display_name(), script);
 
-        let result = Command::new("sh")
-            .arg("-c")
+        let mut cmd = Command::new("sh");
+        cmd.arg("-c")
             .arg(script)
             .env("PATH", tspm_core::get_augmented_path())
-            .current_dir(self.config.cwd.as_deref().unwrap_or(std::path::Path::new(".")))
-            .output()
-            .await;
+            .current_dir(self.config.cwd.as_deref().unwrap_or(std::path::Path::new(".")));
+
+        #[cfg(unix)]
+        {
+            #[allow(unused_imports)]
+            use std::os::unix::process::CommandExt;
+            let user = self.config.user.clone();
+            let group = self.config.group.clone();
+            unsafe {
+                cmd.pre_exec(move || {
+                    if let Some(ref group_name) = group {
+                        let c_group = std::ffi::CString::new(group_name.as_str())
+                            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
+                        let grp = libc::getgrnam(c_group.as_ptr());
+                        if grp.is_null() {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidInput,
+                                format!("Group '{}' not found", group_name),
+                            ));
+                        }
+                        let gid = (*grp).gr_gid;
+                        if libc::setgid(gid) != 0 {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::PermissionDenied,
+                                format!("Failed to set gid for group '{}'", group_name),
+                            ));
+                        }
+                    }
+
+                    if let Some(ref user_name) = user {
+                        let c_user = std::ffi::CString::new(user_name.as_str())
+                            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
+                        let pwd = libc::getpwnam(c_user.as_ptr());
+                        if pwd.is_null() {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidInput,
+                                format!("User '{}' not found", user_name),
+                            ));
+                        }
+                        let uid = (*pwd).pw_uid;
+                        if libc::setuid(uid) != 0 {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::PermissionDenied,
+                                format!("Failed to set uid for user '{}'", user_name),
+                            ));
+                        }
+                    }
+
+                    Ok(())
+                });
+            }
+        }
+
+        let result = cmd.output().await;
 
         match result {
             Ok(output) if output.status.success() => {
@@ -441,13 +535,64 @@ impl ManagedProcess {
         }
     }
 
-    async fn run_script_static(label: &str, script: &str) {
-        let result = Command::new("sh")
-            .arg("-c")
+    async fn run_script_static(label: &str, script: &str, user: &Option<String>, group: &Option<String>) {
+        let mut cmd = Command::new("sh");
+        cmd.arg("-c")
             .arg(script)
-            .env("PATH", tspm_core::get_augmented_path())
-            .output()
-            .await;
+            .env("PATH", tspm_core::get_augmented_path());
+
+        #[cfg(unix)]
+        {
+            #[allow(unused_imports)]
+            use std::os::unix::process::CommandExt;
+            let user = user.clone();
+            let group = group.clone();
+            unsafe {
+                cmd.pre_exec(move || {
+                    if let Some(ref group_name) = group {
+                        let c_group = std::ffi::CString::new(group_name.as_str())
+                            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
+                        let grp = libc::getgrnam(c_group.as_ptr());
+                        if grp.is_null() {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidInput,
+                                format!("Group '{}' not found", group_name),
+                            ));
+                        }
+                        let gid = (*grp).gr_gid;
+                        if libc::setgid(gid) != 0 {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::PermissionDenied,
+                                format!("Failed to set gid for group '{}'", group_name),
+                            ));
+                        }
+                    }
+
+                    if let Some(ref user_name) = user {
+                        let c_user = std::ffi::CString::new(user_name.as_str())
+                            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
+                        let pwd = libc::getpwnam(c_user.as_ptr());
+                        if pwd.is_null() {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidInput,
+                                format!("User '{}' not found", user_name),
+                            ));
+                        }
+                        let uid = (*pwd).pw_uid;
+                        if libc::setuid(uid) != 0 {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::PermissionDenied,
+                                format!("Failed to set uid for user '{}'", user_name),
+                            ));
+                        }
+                    }
+
+                    Ok(())
+                });
+            }
+        }
+
+        let result = cmd.output().await;
 
         match result {
             Ok(output) if output.status.success() => {

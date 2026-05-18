@@ -27,11 +27,14 @@ After=network.target
 [Service]
 Type=simple
 User={user}
+Group={user}
 Environment=HOME={home}
+WorkingDirectory={home}
 ExecStart={exe} daemon
-ExecStop={exe} stop --all
 Restart=on-failure
 RestartSec=5
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
@@ -55,9 +58,10 @@ WantedBy=multi-user.target
             .map_err(|e| format!("Failed to write service file to {}. Error: {}. (Hint: Run with sudo)", unit_path.display(), e))?;
 
         info!("[TSPM] systemd service installed at {}", unit_path.display());
-        info!("[TSPM] Run the following commands to start:");
+        info!("[TSPM] Run the following commands to enable:");
         info!("       sudo systemctl daemon-reload");
         info!("       sudo systemctl enable --now tspm");
+        info!("[TSPM] View logs with: journalctl -u tspm -f");
 
         Ok(())
     }

@@ -182,6 +182,8 @@ pub async fn handle_describe(
         println!("  Script: {}", config.script);
         println!("  Instances: {}", config.instances);
         println!("  Namespace: {:?}", config.namespace);
+        println!("  User: {:?}", config.user);
+        println!("  Group: {:?}", config.group);
     } else {
         println!("Process '{name}' not found");
     }
@@ -308,8 +310,9 @@ pub async fn handle_resurrect(
     port: u16,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let persistence = tspm_deploy::PersistenceManager::new();
-    if let Some(data) = persistence.load() {
-        let cfg = tspm_core::TspmConfig {
+    let cfg = if let Some(data) = persistence.load() {
+        println!("[TSPM] Loading from saved state");
+        tspm_core::TspmConfig {
             processes: data.processes,
             defaults: None,
             namespace: None,
@@ -319,37 +322,47 @@ pub async fn handle_resurrect(
             structured_logging: false,
             api: None,
             deploy: None,
-        };
-
-        let mut manager = ProcessManager::new();
-        manager.load_from_config(&cfg).await?;
-        manager.start_all().await?;
-
-        println!("[TSPM] {} processes resurrected", cfg.processes.len());
-
-        let manager_arc = Arc::new(Mutex::new(manager));
-        let dashboard_handle = if dashboard {
-            println!("[TSPM] Dashboard starting on http://localhost:{}", port);
-            let m = manager_arc.clone();
-            Some(tokio::spawn(async move {
-                let _ = tspm_server::start_dashboard(m, port, "0.0.0.0").await;
-            }))
-        } else {
-            None
-        };
-
-        tspm_engine::SignalHandler::wait_for_shutdown().await;
-        
-        if let Some(handle) = dashboard_handle {
-            handle.abort();
-        }
-
-        if let Ok(mgr) = Arc::try_unwrap(manager_arc) {
-            mgr.into_inner().stop_all().await?;
         }
     } else {
-        println!("[TSPM] No saved state found");
+        // Fallback: try to load from config file
+        if let Some(config_path) = tspm_core::discover_config_file() {
+            println!("[TSPM] No saved state, loading from {}", config_path.display());
+            tspm_core::load_config_with_discovery(Some(&config_path))?
+        } else {
+            println!("[TSPM] No saved state and no config file found");
+            println!("[TSPM] Starting dashboard with empty process list");
+            tspm_core::TspmConfig::default()
+        }
+    };
+
+    let mut manager = ProcessManager::new();
+    if !cfg.processes.is_empty() {
+        manager.load_from_config(&cfg).await?;
+        manager.start_all().await?;
+        println!("[TSPM] {} processes started", cfg.processes.len());
     }
+
+    let manager_arc = Arc::new(Mutex::new(manager));
+    let dashboard_handle = if dashboard {
+        println!("[TSPM] Dashboard starting on http://0.0.0.0:{}", port);
+        let m = manager_arc.clone();
+        Some(tokio::spawn(async move {
+            let _ = tspm_server::start_dashboard(m, port, "0.0.0.0").await;
+        }))
+    } else {
+        None
+    };
+
+    tspm_engine::SignalHandler::wait_for_shutdown().await;
+    
+    if let Some(handle) = dashboard_handle {
+        handle.abort();
+    }
+
+    if let Ok(mgr) = Arc::try_unwrap(manager_arc) {
+        mgr.into_inner().stop_all().await?;
+    }
+
     Ok(())
 }
 

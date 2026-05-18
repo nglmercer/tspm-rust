@@ -48,7 +48,7 @@ export function LogsViewer({ entries, processes, onClear }: Props) {
                 {filtered.map((e, i) => (
                     <div class={styles.line} key={i}>
                         <span class={styles.time}>{e.timestamp || '--:--:--'}</span>
-                        <span class={styles.proc} title={e.processName}>{e.processName?.split('/').pop() || '?'}</span>
+                        <span class={styles.proc} title={e.processName}>{e.processName?.split('/').pop() || e.processName}</span>
                         <span class={`${styles.msg} ${e.type === 'stderr' ? styles.stderr : ''}`}>
                             <AnsiText text={e.message} />
                         </span>

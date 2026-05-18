@@ -144,7 +144,7 @@ pub enum Commands {
         config: Option<PathBuf>,
 
         /// API port
-        #[arg(short = 'p', long, default_value = "3000")]
+        #[arg(short = 'p', long, default_value = "7890")]
         port: u16,
     },
 
@@ -172,14 +172,14 @@ pub enum Commands {
         dashboard: bool,
 
         /// Dashboard port
-        #[arg(short = 'p', long, default_value = "3000")]
+        #[arg(short = 'p', long, default_value = "7890")]
         port: u16,
     },
 
     /// Run as a daemon (resurrect + dashboard)
     Daemon {
         /// Dashboard port
-        #[arg(short = 'p', long, default_value = "3000")]
+        #[arg(short = 'p', long, default_value = "7890")]
         port: u16,
     },
 
@@ -255,7 +255,7 @@ pub enum Commands {
     /// Start the TSPM Web Dashboard
     Dashboard {
         /// Port to listen on
-        #[arg(short = 'p', long, default_value = "3000")]
+        #[arg(short = 'p', long, default_value = "7890")]
         port: u16,
 
         /// Host to listen on

@@ -203,6 +203,8 @@ fn apply_defaults(proc: ProcessConfig, defaults: &Option<ProcessConfig>, log_dir
         if merged.watch_delay_ms == 0 { merged.watch_delay_ms = d.watch_delay_ms; }
         if merged.namespace.is_none() { merged.namespace = d.namespace.clone(); }
         if merged.instances == 0 { merged.instances = d.instances; }
+        if merged.user.is_none() { merged.user = d.user.clone(); }
+        if merged.group.is_none() { merged.group = d.group.clone(); }
         if merged.env.is_empty() {
             merged.env = d.env.clone();
         } else {

@@ -44,6 +44,8 @@ export interface ProcessConfig {
   nice?: number;
   killTimeout?: number;
   healthCheck?: HealthCheckConfig;
+  user?: string;
+  group?: string;
 }
 
 export interface HealthCheckConfig {
